@@ -59,6 +59,7 @@ pub struct Admission {
     request: AdmissionRequest,
 }
 
+/// Helper struct to retrive the nested url.
 #[derive(Debug, Deserialize)]
 struct AdmissionRequest {
     url: Url,
@@ -71,6 +72,7 @@ impl Admission {
     }
 }
 
+/// The representation of a user in the database.
 #[derive(Debug)]
 pub struct User {
     pub id: String,
