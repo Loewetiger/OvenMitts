@@ -10,7 +10,7 @@ use ovenmitts::routes::*;
 #[launch]
 fn rocket() -> _ {
     rocket::build()
-        .mount("/", routes![index])
+        .mount("/", routes![post_admission])
         .attach(Mitts::init())
         .attach(AdHoc::try_on_ignite("SQLx Migrations", run_migrations))
 }
