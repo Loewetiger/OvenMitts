@@ -71,3 +71,14 @@ impl Admission {
     }
 }
 
+#[derive(Debug)]
+pub struct User {
+    pub id: String,
+    pub username: String,
+    pub password: String,
+    pub stream_key: String,
+    pub is_admin: bool,
+    pub can_stream: bool,
+    pub can_restream: bool,
+    pub can_privatestream: bool,
+}
