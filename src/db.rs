@@ -1,3 +1,5 @@
+//! Database releated functions like the db pool and migrations.
+
 use rocket::{fairing, Build, Rocket};
 use rocket_db_pools::{sqlx, Database};
 
