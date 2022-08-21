@@ -1,10 +1,11 @@
 //! Common SQL queries for OvenMitts.
 
-use rocket_db_pools::Connection;
+use sqlx::{pool::PoolConnection, Sqlite};
 
-use crate::{db::Mitts, objects::User};
+use crate::objects::User;
 
-pub async fn get_user_by_session(session: &str, mut db: Connection<Mitts>) -> Option<User> {
+/// Get a user by their session token.
+pub async fn get_user_by_session(session: &str, db: &mut PoolConnection<Sqlite>) -> Option<User> {
     sqlx::query_as!(
         User,
         "
@@ -15,7 +16,22 @@ pub async fn get_user_by_session(session: &str, mut db: Connection<Mitts>) -> Op
         ",
         session
     )
-    .fetch_one(&mut *db)
+    .fetch_one(db)
+    .await
+    .ok()
+}
+
+/// Get a user by their username.
+pub async fn get_user_by_name(name: &str, db: &mut PoolConnection<Sqlite>) -> Option<User> {
+    sqlx::query_as!(
+        User,
+        "
+        SELECT * FROM users
+        WHERE users.username = ?
+        ",
+        name
+    )
+    .fetch_one(db)
     .await
     .ok()
 }
