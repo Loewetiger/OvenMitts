@@ -3,6 +3,9 @@ extern crate rocket;
 
 use ovenmitts::auth::extract_permissions;
 use rocket::fairing::AdHoc;
+use rocket::figment::providers::{Env, Format, Toml};
+use rocket::figment::value::{Map, Value};
+use rocket::figment::{map, Figment, Profile};
 use rocket_db_pools::Database;
 use rocket_grants::GrantsFairing;
 
@@ -11,7 +14,16 @@ use ovenmitts::routes::{get_user, post_admission, post_login, post_logout};
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build()
+    let db: Map<_, Value> = map! {
+        "url" => "mitts.sqlite".into(),
+    };
+    let figment = Figment::from(rocket::Config::default())
+        .merge(("databases", map!["mitts" => db]))
+        .merge(Toml::file("Mitts.toml").nested())
+        .merge(Env::prefixed("MITTS_").global())
+        .select(Profile::from_env_or("APP_PROFILE", "default"));
+
+    rocket::custom(figment)
         .mount(
             "/",
             routes![post_admission, get_user, post_login, post_logout],
