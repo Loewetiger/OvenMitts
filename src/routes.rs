@@ -7,7 +7,7 @@ use crate::{
     admission::handle_admission,
     auth::AuthGuard,
     db::Mitts,
-    objects::{Admission, AdmissionResponse},
+    objects::{Admission, AdmissionResponse, SendableUser},
 };
 
 /// Used by OvenMediaEngine's [admission webhooks](https://airensoft.gitbook.io/ovenmediaengine/access-control/admission-webhooks).
@@ -23,6 +23,6 @@ pub async fn post_admission(
 }
 
 #[get("/user")]
-pub fn get_user(guard: AuthGuard) {
-    ()
+pub fn get_user(guard: AuthGuard) -> Json<SendableUser> {
+    Json(guard.user.into())
 }
