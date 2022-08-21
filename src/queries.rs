@@ -1,4 +1,4 @@
-//! Common SQL queries for OvenMitts.
+//! Common SQL queries for `OvenMitts`.
 
 use sqlx::{pool::PoolConnection, Sqlite};
 

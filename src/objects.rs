@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-/// Response to OvenMediaEngine's admission webhook.
+/// Response to `OvenMediaEngine`'s admission webhook.
 #[derive(Debug, Serialize)]
 pub struct AdmissionResponse {
     allowed: bool,
@@ -12,7 +12,7 @@ pub struct AdmissionResponse {
 }
 
 impl AdmissionResponse {
-    /// Returns an [AdmissionResponse] that allows streaming under a new url (most common, because a valid stream key has been supplied).
+    /// Returns an [`AdmissionResponse`] that allows streaming under a new url (most common, because a valid stream key has been supplied).
     /// The new url should not contain the stream key.
     ///
     /// The resulting JSON will look like this:
@@ -22,13 +22,14 @@ impl AdmissionResponse {
     ///   new_url: "https://example.com/stream/Username"
     /// }
     /// ```
-    pub fn allow(new_url: Url) -> Self {
-        AdmissionResponse {
+    #[must_use]
+    pub const fn allow(new_url: Url) -> Self {
+        Self {
             allowed: true,
             new_url: Some(new_url),
         }
     }
-    /// Returns an [AdmissionResponse] that denys streaming (because an invalid stream key has been supplied, or an internal error occured).
+    /// Returns an [`AdmissionResponse`] that denys streaming (because an invalid stream key has been supplied, or an internal error occured).
     ///
     /// The resulting JSON will look like this:
     /// ```json
@@ -36,17 +37,18 @@ impl AdmissionResponse {
     ///   allowed: false
     /// }
     /// ```
-    pub fn deny() -> Self {
-        AdmissionResponse {
+    #[must_use]
+    pub const fn deny() -> Self {
+        Self {
             allowed: false,
             new_url: None,
         }
     }
 }
 
-/// The request that is sent by OvenMediaEngine.
+/// The request that is sent by `OvenMediaEngine`.
 ///
-/// Most of the request gets discarded, since all that's really needed for OvenMitts is the `url` field, because the stream key is found there.
+/// Most of the request gets discarded, since all that's really needed for `OvenMitts` is the `url` field, because the stream key is found there.
 /// ```json
 /// {
 ///   "request": {
@@ -67,7 +69,8 @@ struct AdmissionRequest {
 
 impl Admission {
     /// Returns the url which contains the stream key in it's path.
-    pub fn borrow_url(&self) -> &Url {
+    #[must_use]
+    pub const fn borrow_url(&self) -> &Url {
         &self.request.url
     }
 }
@@ -100,7 +103,7 @@ pub struct SendableUser {
 
 impl From<User> for SendableUser {
     fn from(user: User) -> Self {
-        SendableUser {
+        Self {
             id: user.id,
             username: user.username,
             stream_key: user.stream_key,

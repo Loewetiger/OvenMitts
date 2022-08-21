@@ -42,7 +42,7 @@ impl<'r> FromRequest<'r> for AuthGuard {
             Some(token) => {
                 let user = get_user_by_session(&token, &mut *db).await;
                 match user {
-                    Some(user) => Outcome::Success(AuthGuard { user }),
+                    Some(user) => Outcome::Success(Self { user }),
                     None => Outcome::Failure((Status::Unauthorized, "No user found in database")),
                 }
             }
@@ -55,15 +55,14 @@ impl<'r> FromRequest<'r> for AuthGuard {
 pub async fn extract_permissions(req: &rocket::Request<'_>) -> Option<Vec<String>> {
     let guard = match AuthGuard::from_request(req).await {
         Outcome::Success(g) => g,
-        Outcome::Failure(_) => return None,
-        Outcome::Forward(_) => return None,
+        _ => return None,
     };
     Some(
         guard
             .user
             .permissions
             .split(',')
-            .map(|s| s.to_string())
+            .map(std::string::ToString::to_string)
             .collect(),
     )
 }

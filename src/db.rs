@@ -3,7 +3,7 @@
 use rocket::{fairing, Build, Rocket};
 use rocket_db_pools::{sqlx, Database};
 
-/// The main SQLite database.
+/// The main `SQLite` database.
 #[derive(Database)]
 #[database("mitts")]
 pub struct Mitts(sqlx::SqlitePool);
