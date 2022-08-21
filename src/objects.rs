@@ -85,3 +85,24 @@ pub struct User {
     pub stream_key: String,
     pub permissions: String,
 }
+
+#[derive(Serialize, Debug)]
+/// Like the [User] struct, but without the hashed password. Inteded to be sent to the frontend.
+pub struct SendableUser {
+    /// V4 UUID.
+    pub id: String,
+    /// Username, used for displaying.
+    pub username: String,
+    /// Stream key, used for displaying.
+    pub stream_key: String,
+}
+
+impl From<User> for SendableUser {
+    fn from(user: User) -> Self {
+        SendableUser {
+            id: user.id,
+            username: user.username,
+            stream_key: user.stream_key,
+        }
+    }
+}
