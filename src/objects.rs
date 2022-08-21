@@ -75,9 +75,13 @@ impl Admission {
 /// The representation of a user in the database.
 #[derive(Debug)]
 pub struct User {
+    /// V4 UUID.
     pub id: String,
+    /// Username, will be used for URL rewrite.
     pub username: String,
+    /// Argon2id hased password.
     pub password: String,
+    /// Randomly generated stream key.
     pub stream_key: String,
     pub permissions: String,
 }
