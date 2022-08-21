@@ -10,6 +10,7 @@ use rocket_db_pools::Connection;
 
 use crate::{db::Mitts, objects::User, queries::get_user_by_session};
 
+#[derive(Debug)]
 pub struct AuthGuard {
     pub user: User,
 }
@@ -46,4 +47,20 @@ impl<'r> FromRequest<'r> for AuthGuard {
             None => Outcome::Failure((Status::Unauthorized, "No session")),
         }
     }
+}
+
+pub async fn extract_permissions(req: &rocket::Request<'_>) -> Option<Vec<String>> {
+    let guard = match AuthGuard::from_request(req).await {
+        Outcome::Success(g) => g,
+        Outcome::Failure(_) => return None,
+        Outcome::Forward(_) => return None,
+    };
+    Some(
+        guard
+            .user
+            .permissions
+            .split(',')
+            .map(|s| s.to_string())
+            .collect(),
+    )
 }
