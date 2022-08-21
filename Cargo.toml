@@ -18,6 +18,9 @@ rocket-grants = "0.5.0-rc"
 serde = { version = "1.0", features = ["derive"] }
 url = { version = "2.2", features = ["serde"] }
 chrono = "0.4"
+rand_core = "0.6"
+rust-argon2 = "1.0"
+base64 = "0.13"
 
 [dependencies.sqlx]
 version = "0.5"

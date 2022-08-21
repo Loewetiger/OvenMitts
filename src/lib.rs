@@ -6,6 +6,7 @@ extern crate rocket;
 
 mod admission;
 pub mod auth;
+pub mod crypto;
 pub mod db;
 pub mod objects;
 pub mod queries;
