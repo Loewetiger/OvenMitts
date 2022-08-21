@@ -12,7 +12,10 @@ use ovenmitts::routes::*;
 #[launch]
 fn rocket() -> _ {
     rocket::build()
-        .mount("/", routes![post_admission, get_user])
+        .mount(
+            "/",
+            routes![post_admission, get_user, post_login, post_logout],
+        )
         .attach(GrantsFairing::with_extractor_fn(|req| {
             Box::pin(extract_permissions(req))
         }))
