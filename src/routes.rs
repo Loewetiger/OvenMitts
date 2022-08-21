@@ -5,6 +5,7 @@ use rocket_db_pools::Connection;
 
 use crate::{
     admission::handle_admission,
+    auth::AuthGuard,
     db::Mitts,
     objects::{Admission, AdmissionResponse},
 };
@@ -19,4 +20,9 @@ pub async fn post_admission(
     db: Connection<Mitts>,
 ) -> Json<AdmissionResponse> {
     Json(handle_admission(adm.into_inner(), db).await)
+}
+
+#[get("/user")]
+pub fn get_user(guard: AuthGuard) {
+    ()
 }
