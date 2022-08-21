@@ -30,6 +30,7 @@ pub async fn post_admission(
 
 /// Get information about the currently logged in user.
 #[get("/user")]
+#[must_use]
 pub fn get_user(guard: AuthGuard) -> Json<SendableUser> {
     Json(guard.user.into())
 }
@@ -52,13 +53,14 @@ pub async fn post_login(
         verify_password(&user.password, creds.password.as_bytes()).unwrap_or(false);
     if valid_password {
         let token = base64::encode(random_data(64));
-        if let Err(_) = sqlx::query!(
+        if sqlx::query!(
             "INSERT INTO sessions(session, user_id) VALUES(?, ?)",
             token,
             user.id
         )
         .execute(&mut *db)
         .await
+        .is_err()
         {
             return Status::InternalServerError;
         };

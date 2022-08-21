@@ -4,6 +4,7 @@ use argon2::Config;
 use rand_core::{OsRng, RngCore};
 
 /// Generate a random byte array of the given length with the OS's secure random number generator.
+#[must_use]
 pub fn random_data(size: usize) -> Vec<u8> {
     let mut key = vec![0; size];
     OsRng.fill_bytes(&mut key);

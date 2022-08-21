@@ -7,7 +7,7 @@ use rocket_db_pools::Database;
 use rocket_grants::GrantsFairing;
 
 use ovenmitts::db::{run_migrations, Mitts};
-use ovenmitts::routes::*;
+use ovenmitts::routes::{get_user, post_admission, post_login, post_logout};
 
 #[launch]
 fn rocket() -> _ {

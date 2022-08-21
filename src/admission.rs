@@ -10,14 +10,14 @@ use crate::{
 /// Check whether the incoming stream is allowed to stream.
 ///
 /// This function does the following:
-/// - Retrieve the url sent by OvenMediaEngine and split the path into a [Vec]
+/// - Retrieve the url sent by `OvenMediaEngine` and split the path into a [Vec]
 /// - Pop off the last element, which *should* be the stream key
 /// - Query the database for said key
 /// - If a user is found: allow the stream and rewrite the url to point to their username
 /// - If no user is found, or a database error occurs, deny the stream
 pub async fn handle_admission(adm: Admission, mut db: Connection<Mitts>) -> AdmissionResponse {
     let mut url = adm.borrow_url().clone();
-    let mut path = match url.path_segments().map(|c| c.collect::<Vec<_>>()) {
+    let mut path: Vec<&str> = match url.path_segments().map(std::iter::Iterator::collect) {
         Some(vec) => vec,
         None => return AdmissionResponse::deny(),
     };

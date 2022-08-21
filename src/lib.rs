@@ -1,4 +1,4 @@
-//! A set of tools built around OvenMediaEngine, which makes hosting your own low-latency streaming server easy.
+//! A set of tools built around `OvenMediaEngine`, which makes hosting your own low-latency streaming server easy.
 
 #![warn(missing_docs)]
 #[macro_use]
