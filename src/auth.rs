@@ -11,7 +11,9 @@ use rocket_db_pools::Connection;
 use crate::{db::Mitts, objects::User, queries::get_user_by_session};
 
 #[derive(Debug)]
+/// A guard to guarantee that a user is logged in.
 pub struct AuthGuard {
+    /// The user that is logged in.
     pub user: User,
 }
 
@@ -20,7 +22,7 @@ impl<'r> FromRequest<'r> for AuthGuard {
     type Error = &'static str;
 
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
-        let db: Connection<Mitts> = match Connection::from_request(req).await {
+        let mut db: Connection<Mitts> = match Connection::from_request(req).await {
             Outcome::Success(db) => db,
             Outcome::Failure(_) => {
                 return Outcome::Failure((
@@ -38,7 +40,7 @@ impl<'r> FromRequest<'r> for AuthGuard {
 
         match cookie {
             Some(token) => {
-                let user = get_user_by_session(&token, db).await;
+                let user = get_user_by_session(&token, &mut *db).await;
                 match user {
                     Some(user) => Outcome::Success(AuthGuard { user }),
                     None => Outcome::Failure((Status::Unauthorized, "No user found in database")),
@@ -49,6 +51,7 @@ impl<'r> FromRequest<'r> for AuthGuard {
     }
 }
 
+/// Read the permissions of the currently logged in user from the database.
 pub async fn extract_permissions(req: &rocket::Request<'_>) -> Option<Vec<String>> {
     let guard = match AuthGuard::from_request(req).await {
         Outcome::Success(g) => g,
