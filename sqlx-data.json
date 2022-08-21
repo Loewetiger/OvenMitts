@@ -1,0 +1,45 @@
+{
+  "db": "SQLite",
+  "49232ba21033838220a89cb4dd00b74c19f6ee56d8da0c85538e96c1ccd19ecd": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "username",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "password",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "stream_key",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "permissions",
+          "ordinal": 4,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT * FROM users WHERE stream_key = ?"
+  }
+}

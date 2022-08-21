@@ -16,8 +16,9 @@ rocket = { version = "0.5.0-rc", features = ["json"] }
 rocket_db_pools = { version = "0.1.0-rc", features = ["sqlx_sqlite"] }
 serde = { version = "1.0", features = ["derive"] }
 url = { version = "2.2", features = ["serde"] }
+chrono = "0.4"
 
 [dependencies.sqlx]
 version = "0.5"
 default-features = false
-features = ["macros", "migrate"]
+features = ["macros", "chrono", "offline", "migrate"]
