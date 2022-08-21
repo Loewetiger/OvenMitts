@@ -83,6 +83,7 @@ pub struct User {
     pub password: String,
     /// Randomly generated stream key.
     pub stream_key: String,
+    /// The various grants that the user has.
     pub permissions: String,
 }
 
@@ -105,4 +106,13 @@ impl From<User> for SendableUser {
             stream_key: user.stream_key,
         }
     }
+}
+
+#[derive(Debug, Deserialize)]
+/// The request that is sent by the frontend when a user wants to login.
+pub struct LoginUser {
+    /// Username of the user.
+    pub username: String,
+    /// Password of the user.
+    pub password: String,
 }
