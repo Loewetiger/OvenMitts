@@ -2,6 +2,7 @@
 
 use rocket::{
     http::{Cookie, CookieJar, SameSite, Status},
+    response::status,
     serde::json::Json,
     time::{Duration, OffsetDateTime},
 };
@@ -10,7 +11,7 @@ use rocket_db_pools::Connection;
 use crate::{
     admission::handle_admission,
     auth::AuthGuard,
-    crypto::{random_data, verify_password},
+    crypto::{gen_stream_key, hash_password, random_data, verify_password},
     db::Mitts,
     objects::{Admission, AdmissionResponse, LoginUser, SendableUser},
     queries::get_user_by_name,
@@ -97,4 +98,40 @@ pub async fn post_logout(cookies: &CookieJar<'_>, mut db: Connection<Mitts>) -> 
         }
         None => Status::Ok,
     }
+}
+
+/// Register endpoint. Creates a new user in the database.
+#[post("/user/register", data = "<creds>")]
+pub async fn post_register(
+    creds: Json<LoginUser>,
+    mut db: Connection<Mitts>,
+) -> Result<(), status::Custom<&'static str>> {
+    let password_hash = match hash_password(creds.password.as_bytes()) {
+        Ok(h) => h,
+        Err(_) => {
+            return Err(status::Custom(
+                Status::InternalServerError,
+                "Failed to hash password",
+            ))
+        }
+    };
+    let id = uuid::Uuid::new_v4().to_string();
+    let stream_key = gen_stream_key();
+    if sqlx::query!(
+        "INSERT INTO users(id, username, password, stream_key) VALUES(?, ?, ?, ?)",
+        id,
+        creds.username,
+        password_hash,
+        stream_key
+    )
+    .execute(&mut *db)
+    .await
+    .is_err()
+    {
+        return Err(status::Custom(
+            Status::InternalServerError,
+            "Failed to create user",
+        ));
+    };
+    Ok(())
 }

@@ -10,7 +10,7 @@ use rocket_db_pools::Database;
 use rocket_grants::GrantsFairing;
 
 use ovenmitts::db::{run_migrations, Mitts};
-use ovenmitts::routes::{get_user, post_admission, post_login, post_logout};
+use ovenmitts::routes::{get_user, post_admission, post_login, post_logout, post_register};
 
 #[launch]
 fn rocket() -> _ {
@@ -26,7 +26,13 @@ fn rocket() -> _ {
     rocket::custom(figment)
         .mount(
             "/",
-            routes![post_admission, get_user, post_login, post_logout],
+            routes![
+                post_admission,
+                get_user,
+                post_login,
+                post_logout,
+                post_register
+            ],
         )
         .attach(GrantsFairing::with_extractor_fn(|req| {
             Box::pin(extract_permissions(req))
