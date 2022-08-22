@@ -1,5 +1,15 @@
 {
   "db": "SQLite",
+  "06f6f839685154616d18a11545aa112b4d2980602192c56a80202c24fedabca4": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 4
+      }
+    },
+    "query": "INSERT INTO users(id, username, password, stream_key) VALUES(?, ?, ?, ?)"
+  },
   "349b1d94ecda9841b876734bb179804adfbb1fa549faca11f232112ab71ebfc3": {
     "describe": {
       "columns": [],
@@ -37,6 +47,11 @@
           "name": "permissions",
           "ordinal": 4,
           "type_info": "Text"
+        },
+        {
+          "name": "stream_title",
+          "ordinal": 5,
+          "type_info": "Text"
         }
       ],
       "nullable": [
@@ -44,7 +59,8 @@
         false,
         false,
         false,
-        false
+        true,
+        true
       ],
       "parameters": {
         "Right": 1
@@ -79,6 +95,11 @@
           "name": "permissions",
           "ordinal": 4,
           "type_info": "Text"
+        },
+        {
+          "name": "stream_title",
+          "ordinal": 5,
+          "type_info": "Text"
         }
       ],
       "nullable": [
@@ -86,7 +107,8 @@
         false,
         false,
         false,
-        false
+        true,
+        true
       ],
       "parameters": {
         "Right": 1
@@ -131,6 +153,11 @@
           "name": "permissions",
           "ordinal": 4,
           "type_info": "Text"
+        },
+        {
+          "name": "stream_title",
+          "ordinal": 5,
+          "type_info": "Text"
         }
       ],
       "nullable": [
@@ -138,7 +165,8 @@
         false,
         false,
         false,
-        false
+        true,
+        true
       ],
       "parameters": {
         "Right": 1
