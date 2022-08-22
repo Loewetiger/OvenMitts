@@ -29,6 +29,9 @@ pub async fn handle_admission(adm: Admission, mut db: Connection<Mitts>) -> Admi
 
     match user {
         Ok(user) => {
+            if !user.has_permission("CAN_STREAM".into()) {
+                return AdmissionResponse::deny();
+            };
             path.push(&user.username);
             url.set_path(&path.join("/"));
             AdmissionResponse::allow(url)
