@@ -87,7 +87,30 @@ pub struct User {
     /// Randomly generated stream key.
     pub stream_key: String,
     /// The various grants that the user has.
-    pub permissions: String,
+    pub permissions: Option<String>,
+    /// Title of the stream.
+    pub stream_title: Option<String>,
+}
+
+impl User {
+    /// Returns a Vec of all the permissions.
+    pub fn permission_vec(&self) -> Option<Vec<String>> {
+        Some(
+            self.permissions
+                .as_ref()?
+                .split(',')
+                .map(std::string::ToString::to_string)
+                .collect(),
+        )
+    }
+    /// Check whether the user has a specified permission
+    pub fn has_permission(&self, permission: String) -> bool {
+        let perms = self.permission_vec();
+        match perms {
+            Some(v) => v.contains(&permission),
+            None => false,
+        }
+    }
 }
 
 #[derive(Serialize, Debug)]

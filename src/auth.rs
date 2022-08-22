@@ -57,12 +57,5 @@ pub async fn extract_permissions(req: &rocket::Request<'_>) -> Option<Vec<String
         Outcome::Success(g) => g,
         _ => return None,
     };
-    Some(
-        guard
-            .user
-            .permissions
-            .split(',')
-            .map(std::string::ToString::to_string)
-            .collect(),
-    )
+    guard.user.permission_vec()
 }
