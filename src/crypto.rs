@@ -1,9 +1,10 @@
 //! Password hashing, verification and random number generation
 
 use argon2::{
-    password_hash::{PasswordHash, PasswordHasher},
+    password_hash::{PasswordHash, PasswordHasher, SaltString},
     Argon2, PasswordVerifier,
 };
+use rand::distributions::{Alphanumeric, DistString};
 use rand_core::{OsRng, RngCore};
 
 /// Generate a random byte array of the given length with the OS's secure random number generator.
@@ -16,11 +17,9 @@ pub fn random_data(size: usize) -> Vec<u8> {
 
 /// Hash a password using Argon2id.
 pub fn hash_password(password: &[u8]) -> Result<String, argon2::password_hash::Error> {
-    let salt = random_data(16);
+    let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
-    let password_hash = argon2
-        .hash_password(password, &base64::encode(salt))?
-        .to_string();
+    let password_hash = argon2.hash_password(password, &salt)?.to_string();
     Ok(password_hash)
 }
 
@@ -31,4 +30,13 @@ pub fn verify_password(hash: &str, password: &[u8]) -> Result<bool, argon2::pass
         .verify_password(password, &parsed_hash)
         .is_ok();
     Ok(result)
+}
+
+/// Generate a random stream key.
+pub fn gen_stream_key() -> String {
+    format!(
+        "stream_{}_{}",
+        Alphanumeric.sample_string(&mut OsRng, 8),
+        Alphanumeric.sample_string(&mut OsRng, 30)
+    )
 }
