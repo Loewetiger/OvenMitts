@@ -10,10 +10,9 @@ use rocket_db_pools::Connection;
 
 use crate::{
     admission::handle_admission,
-    auth::AuthGuard,
     crypto::{gen_stream_key, hash_password, random_data, verify_password},
     db::Mitts,
-    objects::{Admission, AdmissionResponse, LoginUser, SendableUser},
+    objects::{Admission, AdmissionResponse, LoginUser, SendableUser, User},
     queries::get_user_by_name,
 };
 
@@ -32,8 +31,8 @@ pub async fn post_admission(
 /// Get information about the currently logged in user.
 #[get("/user")]
 #[must_use]
-pub fn get_user(guard: AuthGuard) -> Json<SendableUser> {
-    Json(guard.user.into())
+pub fn get_user(user: User) -> Json<SendableUser> {
+    Json(user.into())
 }
 
 /// Login endpoint. Generates a session cookie and adds the token to the database.

@@ -1,7 +1,16 @@
 //! All the various structs for JSON/db support.
 
+use rocket::{
+    http::Status,
+    outcome::Outcome,
+    request::{self, FromRequest},
+    Request,
+};
+use rocket_db_pools::Connection;
 use serde::{Deserialize, Serialize};
 use url::Url;
+
+use crate::{db::Mitts, queries::get_user_by_session};
 
 /// Response to `OvenMediaEngine`'s admission webhook.
 #[derive(Debug, Serialize)]
@@ -109,6 +118,40 @@ impl User {
         match perms {
             Some(v) => v.contains(&permission),
             None => false,
+        }
+    }
+}
+
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for User {
+    type Error = &'static str;
+
+    async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
+        let mut db: Connection<Mitts> = match Connection::from_request(req).await {
+            Outcome::Success(db) => db,
+            Outcome::Failure(_) => {
+                return Outcome::Failure((
+                    Status::InternalServerError,
+                    "Failed to establish database connection",
+                ))
+            }
+            Outcome::Forward(f) => return Outcome::Forward(f),
+        };
+
+        let cookie: Option<String> = req
+            .cookies()
+            .get("user_session")
+            .and_then(|c| c.value().parse().ok());
+
+        match cookie {
+            Some(token) => {
+                let user = get_user_by_session(&token, &mut *db).await;
+                match user {
+                    Some(user) => Outcome::Success(user),
+                    None => Outcome::Failure((Status::Unauthorized, "No user found in database")),
+                }
+            }
+            None => Outcome::Failure((Status::Unauthorized, "No session")),
         }
     }
 }
