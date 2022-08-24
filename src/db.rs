@@ -2,11 +2,15 @@
 
 use rocket::{fairing, Build, Rocket};
 use rocket_db_pools::{sqlx, Database};
+use sqlx::{pool::PoolConnection, Sqlite};
 
 /// The main `SQLite` database.
 #[derive(Database)]
 #[database("mitts")]
 pub struct Mitts(sqlx::SqlitePool);
+
+/// Enables functions to accept `&mut *db`.
+pub type Db = PoolConnection<Sqlite>;
 
 /// Run the database migrations to make sure the right tables exist at any point.
 pub async fn run_migrations(rocket: Rocket<Build>) -> fairing::Result {
