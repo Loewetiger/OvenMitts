@@ -10,7 +10,7 @@ use rocket_db_pools::Connection;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::{db::Mitts, queries::get_user_by_session};
+use crate::db::{Mitts, Db};
 
 /// Response to `OvenMediaEngine`'s admission webhook.
 #[derive(Debug, Serialize)]
@@ -120,6 +120,36 @@ impl User {
             None => false,
         }
     }
+    /// Find a User in the database for a given token.
+    pub async fn from_session(token: &str, db: &mut Db) -> Option<Self> {
+        sqlx::query_as!(
+            User,
+            "
+        SELECT users.* FROM users
+        LEFT JOIN sessions
+        ON users.id = sessions.user_id
+        WHERE session = ?
+        ",
+            token
+        )
+        .fetch_one(db)
+        .await
+        .ok()
+    }
+    /// Find a User from the database from the username.
+    pub async fn from_name(username: &str, db: &mut Db) -> Option<Self> {
+        sqlx::query_as!(
+            User,
+            "
+        SELECT * FROM users
+        WHERE users.username = ?
+        ",
+            username
+        )
+        .fetch_one(db)
+        .await
+        .ok()
+    }
 }
 
 #[rocket::async_trait]
@@ -145,7 +175,7 @@ impl<'r> FromRequest<'r> for User {
 
         match cookie {
             Some(token) => {
-                let user = get_user_by_session(&token, &mut *db).await;
+                let user = User::from_session(&token, &mut *db).await;
                 match user {
                     Some(user) => Outcome::Success(user),
                     None => Outcome::Failure((Status::Unauthorized, "No user found in database")),

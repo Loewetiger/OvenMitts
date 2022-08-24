@@ -13,7 +13,6 @@ use crate::{
     crypto::{gen_stream_key, hash_password, random_data, verify_password},
     db::Mitts,
     objects::{Admission, AdmissionResponse, LoginUser, SendableUser, User},
-    queries::get_user_by_name,
 };
 
 /// Used by OvenMediaEngine's [admission webhooks](https://airensoft.gitbook.io/ovenmediaengine/access-control/admission-webhooks).
@@ -45,7 +44,7 @@ pub async fn post_login(
     if cookies.get("user_session").is_some() {
         return Status::Ok;
     };
-    let user = match get_user_by_name(&creds.username, &mut *db).await {
+    let user = match User::from_name(&creds.username, &mut *db).await {
         Some(u) => u,
         None => return Status::NotFound,
     };
