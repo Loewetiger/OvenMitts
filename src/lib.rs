@@ -9,5 +9,5 @@ pub mod auth;
 pub mod crypto;
 pub mod db;
 pub mod objects;
-pub mod queries;
 pub mod routes;
+
