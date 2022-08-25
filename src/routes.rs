@@ -83,14 +83,12 @@ pub async fn post_logout(cookies: &CookieJar<'_>, mut db: Connection<Mitts>) -> 
     match cookies.get("user_session") {
         Some(c) => {
             let token = c.value();
+            cookies.remove(Cookie::named("user_session"));
             match sqlx::query!("DELETE FROM sessions WHERE session = ?", token)
                 .execute(&mut *db)
                 .await
             {
-                Ok(_) => {
-                    cookies.remove(Cookie::named("user_session"));
-                    Status::Ok
-                }
+                Ok(_) => Status::Ok,
                 Err(_) => Status::InternalServerError,
             }
         }
