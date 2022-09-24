@@ -10,7 +10,7 @@ use rocket_db_pools::Connection;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::db::{Mitts, Db};
+use crate::db::{Db, Mitts};
 
 /// Response to `OvenMediaEngine`'s admission webhook.
 #[derive(Debug, Serialize)]
