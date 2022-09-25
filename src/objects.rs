@@ -150,6 +150,10 @@ impl User {
         .await
         .ok()
     }
+    /// Check if a given username can be found in the database.
+    pub async fn username_exists(username: &str, db: &mut Db) -> bool {
+        Self::from_name(username, db).await.is_some()
+    }
 }
 
 #[rocket::async_trait]
