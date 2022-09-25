@@ -102,6 +102,10 @@ pub async fn post_register(
     creds: Json<LoginUser>,
     mut db: Connection<Mitts>,
 ) -> Result<(), status::Custom<&'static str>> {
+    if User::username_exists(&creds.username, &mut *db).await {
+        return Err(status::Custom(Status::Conflict, "Username already exists"))
+    }
+
     let password_hash = match hash_password(creds.password.as_bytes()) {
         Ok(h) => h,
         Err(_) => {
