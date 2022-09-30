@@ -3,7 +3,8 @@ CREATE TABLE users (
     username TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL,
     stream_key TEXT NOT NULL UNIQUE,
-    permissions TEXT NOT NULL DEFAULT 'CAN_STREAM,CAN_RESTREAM,CAN_PRIVATESTREAM'
+    permissions TEXT,
+    stream_title TEXT
 );
 CREATE TABLE sessions (
     session TEXT PRIMARY KEY NOT NULL UNIQUE,

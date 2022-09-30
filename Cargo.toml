@@ -1,6 +1,6 @@
 [package]
 name = "ovenmitts"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -14,9 +14,15 @@ codegen-units = 1
 [dependencies]
 rocket = { version = "0.5.0-rc", features = ["json"] }
 rocket_db_pools = { version = "0.1.0-rc", features = ["sqlx_sqlite"] }
+rocket-grants = "0.5.0-rc"
 serde = { version = "1.0", features = ["derive"] }
 url = { version = "2.2", features = ["serde"] }
 chrono = "0.4"
+rand_core = "0.6"
+argon2 = "0.4"
+base64 = "0.13"
+rand = "0.8"
+uuid = { version = "1.1", features = ["v4", "fast-rng"] }
 
 [dependencies.sqlx]
 version = "0.5"
