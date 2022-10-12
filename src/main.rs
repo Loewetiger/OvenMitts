@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate rocket;
 
+use ovenmitts::objects::Config;
 //use ovenmitts::auth::extract_permissions;
 use rocket::fairing::AdHoc;
 use rocket::figment::providers::{Env, Format, Toml};
@@ -10,7 +11,10 @@ use rocket_db_pools::Database;
 //use rocket_grants::GrantsFairing;
 
 use ovenmitts::db::{run_migrations, Mitts};
-use ovenmitts::routes::{get_user, post_admission, post_login, post_logout, post_register};
+use ovenmitts::routes::{
+    get_streams, get_user, post_admission, post_login, post_logout, post_register,
+};
+use ovenmitts::static_files::{get_assets, get_index};
 
 #[launch]
 fn rocket() -> _ {
@@ -19,7 +23,7 @@ fn rocket() -> _ {
     };
     let figment = Figment::from(rocket::Config::default())
         .merge(("databases", map!["mitts" => db]))
-        .merge(Toml::file("Mitts.toml").nested())
+        .merge(Toml::file("Mitts.toml").profile("default"))
         .merge(Env::prefixed("MITTS_").global())
         .select(Profile::from_env_or("APP_PROFILE", "default"));
 
@@ -31,7 +35,10 @@ fn rocket() -> _ {
                 get_user,
                 post_login,
                 post_logout,
-                post_register
+                post_register,
+                get_streams,
+                get_index,
+                get_assets
             ],
         )
         /*.attach(GrantsFairing::with_extractor_fn(|req| {
@@ -39,4 +46,5 @@ fn rocket() -> _ {
         }))*/
         .attach(Mitts::init())
         .attach(AdHoc::try_on_ignite("SQLx Migrations", run_migrations))
+        .attach(AdHoc::config::<Config>())
 }
