@@ -15,6 +15,7 @@ FROM alpine:3.16
 # set default env vars
 ENV MITTS_ADDRESS 0.0.0.0
 ENV MITTS_DATABASES {mitts={url="/config/mitts.sqlite"}}
+ENV MITTS_CONFIG /config/mitts.toml
 # if needed, install additional dependencies here
 RUN apk add --no-cache libgcc
 # copy the binary into the final image
