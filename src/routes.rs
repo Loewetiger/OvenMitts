@@ -5,6 +5,7 @@ use rocket::{
     response::status,
     serde::json::Json,
     time::{Duration, OffsetDateTime},
+    State,
 };
 use rocket_db_pools::Connection;
 
@@ -12,7 +13,9 @@ use crate::{
     admission::handle_admission,
     crypto::{gen_stream_key, hash_password, random_data, verify_password},
     db::Mitts,
-    objects::{Admission, AdmissionResponse, LoginUser, SendableUser, User},
+    objects::{
+        Admission, AdmissionResponse, Config, LoginUser, ReqwestError, SendableUser, Streams, User,
+    },
 };
 
 /// Used by OvenMediaEngine's [admission webhooks](https://airensoft.gitbook.io/ovenmediaengine/access-control/admission-webhooks).
@@ -103,7 +106,7 @@ pub async fn post_register(
     mut db: Connection<Mitts>,
 ) -> Result<(), status::Custom<&'static str>> {
     if User::username_exists(&creds.username, &mut *db).await {
-        return Err(status::Custom(Status::Conflict, "Username already exists"))
+        return Err(status::Custom(Status::Conflict, "Username already exists"));
     }
 
     let password_hash = match hash_password(creds.password.as_bytes()) {
@@ -118,8 +121,9 @@ pub async fn post_register(
     let id = uuid::Uuid::new_v4().to_string();
     let stream_key = gen_stream_key();
     if sqlx::query!(
-        "INSERT INTO users(id, username, password, stream_key) VALUES(?, ?, ?, ?)",
+        "INSERT INTO users(id, username, display_name, password, stream_key) VALUES(?, ?, ?, ?, ?)",
         id,
+        creds.username,
         creds.username,
         password_hash,
         stream_key
@@ -134,4 +138,25 @@ pub async fn post_register(
         ));
     };
     Ok(())
+}
+
+/// Returns all currently active streams.
+#[get("/streams")]
+pub async fn get_streams(config: &State<Config>) -> Result<Json<Streams>, ReqwestError> {
+    let mut url = config.ome_url.clone();
+    url.set_path("v1/vhosts/default/apps/stream/streams");
+
+    let client = reqwest::Client::new();
+    let body: Streams = client
+        .get(url.as_str())
+        .header(
+            "authorization",
+            format!("Basic {}", base64::encode(&config.access_token)),
+        )
+        .send()
+        .await?
+        .json()
+        .await?;
+
+    Ok(Json(body))
 }
