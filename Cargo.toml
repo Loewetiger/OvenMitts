@@ -24,3 +24,5 @@ argon2 = "0.4"
 base64 = "0.13"
 rand = "0.8"
 uuid = { version = "1.1", features = ["v4", "fast-rng"] }
+rust-embed = "6.4"
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
