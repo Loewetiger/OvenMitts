@@ -23,7 +23,7 @@ fn rocket() -> _ {
     };
     let figment = Figment::from(rocket::Config::default())
         .merge(("databases", map!["mitts" => db]))
-        .merge(Toml::file("Mitts.toml").profile("default"))
+        .merge(Toml::file(Env::var_or("MITTS_CONFIG", "mitts.toml")).profile("default"))
         .merge(Env::prefixed("MITTS_").global())
         .select(Profile::from_env_or("APP_PROFILE", "default"));
 
