@@ -223,8 +223,10 @@ pub struct LoginUser {
     pub password: String,
 }
 
+/// List of all current streams from OvenMediaEngine.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Streams {
+    /// The vec containing all the stream names.
     pub response: Vec<String>,
 }
 
