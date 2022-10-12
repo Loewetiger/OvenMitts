@@ -4,7 +4,8 @@ use rocket::{
     http::Status,
     outcome::Outcome,
     request::{self, FromRequest},
-    Request,
+    response::Responder,
+    Request, Response,
 };
 use rocket_db_pools::Connection;
 use serde::{Deserialize, Serialize};
@@ -91,6 +92,8 @@ pub struct User {
     pub id: String,
     /// Username, will be used for URL rewrite.
     pub username: String,
+    /// The name that gets displayed in the UI.
+    pub display_name: String,
     /// Argon2id hased password.
     pub password: String,
     /// Randomly generated stream key.
@@ -218,4 +221,41 @@ pub struct LoginUser {
     pub username: String,
     /// Password of the user.
     pub password: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Streams {
+    pub response: Vec<String>,
+}
+
+/// Custom configuration for the OvenMitts.
+#[derive(Debug, serde::Deserialize)]
+pub struct Config {
+    /// The url base to access OvenMediaEngine.
+    pub ome_url: Url,
+    /// OME API access token.
+    pub access_token: String,
+    /// The key used by OME to sign the admission requests.
+    pub admission_key: String,
+}
+
+/// Wrapper type for reqwest to simplify error handling within rocket.
+pub struct ReqwestError(reqwest::Error);
+
+impl<'r> Responder<'r, 'r> for ReqwestError {
+    fn respond_to(self, _: &'r Request<'_>) -> rocket::response::Result<'r> {
+        // Censor the url in the error message, since it might contain sensitive information.
+        let err_msg = self.0.without_url().to_string();
+
+        Ok(Response::build()
+            .sized_body(err_msg.len(), std::io::Cursor::new(err_msg))
+            .status(Status::InternalServerError)
+            .finalize())
+    }
+}
+
+impl From<reqwest::Error> for ReqwestError {
+    fn from(e: reqwest::Error) -> Self {
+        Self(e)
+    }
 }
