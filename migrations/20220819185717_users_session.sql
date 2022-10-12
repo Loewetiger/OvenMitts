@@ -1,6 +1,7 @@
 CREATE TABLE users (
     id TEXT PRIMARY KEY NOT NULL UNIQUE,
     username TEXT NOT NULL UNIQUE,
+    display_name TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL,
     stream_key TEXT NOT NULL UNIQUE,
     permissions TEXT,

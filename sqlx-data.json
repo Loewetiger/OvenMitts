@@ -1,15 +1,5 @@
 {
   "db": "SQLite",
-  "06f6f839685154616d18a11545aa112b4d2980602192c56a80202c24fedabca4": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 4
-      }
-    },
-    "query": "INSERT INTO users(id, username, password, stream_key) VALUES(?, ?, ?, ?)"
-  },
   "349b1d94ecda9841b876734bb179804adfbb1fa549faca11f232112ab71ebfc3": {
     "describe": {
       "columns": [],
@@ -34,27 +24,33 @@
           "type_info": "Text"
         },
         {
-          "name": "password",
+          "name": "display_name",
           "ordinal": 2,
           "type_info": "Text"
         },
         {
-          "name": "stream_key",
+          "name": "password",
           "ordinal": 3,
           "type_info": "Text"
         },
         {
-          "name": "permissions",
+          "name": "stream_key",
           "ordinal": 4,
           "type_info": "Text"
         },
         {
-          "name": "stream_title",
+          "name": "permissions",
           "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "stream_title",
+          "ordinal": 6,
           "type_info": "Text"
         }
       ],
       "nullable": [
+        false,
         false,
         false,
         false,
@@ -67,6 +63,16 @@
       }
     },
     "query": "SELECT * FROM users WHERE stream_key = ?"
+  },
+  "6c5a7909884228d5309a054a0d62b8c95d0348c6aec71c37c0b877c19a7cec53": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 5
+      }
+    },
+    "query": "INSERT INTO users(id, username, display_name, password, stream_key) VALUES(?, ?, ?, ?, ?)"
   },
   "9a8553670477cb01687d4cc440739b1f93ca49ba907ef275bcd1d3996a676f48": {
     "describe": {
@@ -82,27 +88,33 @@
           "type_info": "Text"
         },
         {
-          "name": "password",
+          "name": "display_name",
           "ordinal": 2,
           "type_info": "Text"
         },
         {
-          "name": "stream_key",
+          "name": "password",
           "ordinal": 3,
           "type_info": "Text"
         },
         {
-          "name": "permissions",
+          "name": "stream_key",
           "ordinal": 4,
           "type_info": "Text"
         },
         {
-          "name": "stream_title",
+          "name": "permissions",
           "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "stream_title",
+          "ordinal": 6,
           "type_info": "Text"
         }
       ],
       "nullable": [
+        false,
         false,
         false,
         false,
@@ -140,27 +152,33 @@
           "type_info": "Text"
         },
         {
-          "name": "password",
+          "name": "display_name",
           "ordinal": 2,
           "type_info": "Text"
         },
         {
-          "name": "stream_key",
+          "name": "password",
           "ordinal": 3,
           "type_info": "Text"
         },
         {
-          "name": "permissions",
+          "name": "stream_key",
           "ordinal": 4,
           "type_info": "Text"
         },
         {
-          "name": "stream_title",
+          "name": "permissions",
           "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "stream_title",
+          "ordinal": 6,
           "type_info": "Text"
         }
       ],
       "nullable": [
+        false,
         false,
         false,
         false,
