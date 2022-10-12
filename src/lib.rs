@@ -10,3 +10,4 @@ pub mod crypto;
 pub mod db;
 pub mod objects;
 pub mod routes;
+pub mod static_files;
