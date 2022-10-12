@@ -10,3 +10,9 @@
 
 # Don't track database files
 mitts.*
+
+# Ignore the website directory
+dist/
+
+# Exclude OvenMitts' config file
+Mitts.toml
