@@ -198,8 +198,10 @@ impl<'r> FromRequest<'r> for User {
 pub struct SendableUser {
     /// V4 UUID.
     pub id: String,
-    /// Username, used for displaying.
+    /// URL-safe Username, used for streaming.
     pub username: String,
+    /// Name that gets displayed in the UI.
+    pub display_name: String,
     /// Stream key, used for displaying.
     pub stream_key: String,
 }
@@ -209,6 +211,7 @@ impl From<User> for SendableUser {
         Self {
             id: user.id,
             username: user.username,
+            display_name: user.display_name,
             stream_key: user.stream_key,
         }
     }
@@ -224,10 +227,22 @@ pub struct LoginUser {
 }
 
 /// List of all current streams from OvenMediaEngine.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Streams {
     /// The vec containing all the stream names.
     pub response: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+/// Response for stream info.
+pub struct StreamResp {
+    /// Username of the streaming user, URL safe.
+    pub username: String,
+    /// Name the gets displayed in the UI.
+    pub display_name: String,
+    /// Optional stream title.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
 }
 
 /// Custom configuration for the OvenMitts.

@@ -14,7 +14,8 @@ use crate::{
     crypto::{gen_stream_key, hash_password, random_data, verify_password},
     db::Mitts,
     objects::{
-        Admission, AdmissionResponse, Config, LoginUser, ReqwestError, SendableUser, Streams, User,
+        Admission, AdmissionResponse, Config, LoginUser, ReqwestError, SendableUser, StreamResp,
+        Streams, User,
     },
 };
 
@@ -142,7 +143,7 @@ pub async fn post_register(
 
 /// Returns all currently active streams.
 #[get("/streams")]
-pub async fn get_streams(config: &State<Config>) -> Result<Json<Streams>, ReqwestError> {
+pub async fn get_streams(config: &State<Config>) -> Result<Json<Vec<StreamResp>>, ReqwestError> {
     let mut url = config.ome_url.clone();
     url.set_path("v1/vhosts/default/apps/stream/streams");
 
@@ -158,5 +159,14 @@ pub async fn get_streams(config: &State<Config>) -> Result<Json<Streams>, Reqwes
         .json()
         .await?;
 
-    Ok(Json(body))
+    let streams: Vec<StreamResp> = body
+        .response
+        .into_iter()
+        .map(|e| StreamResp {
+            username: e.clone(),
+            display_name: e,
+            title: None,
+        })
+        .collect();
+    Ok(Json(streams))
 }
