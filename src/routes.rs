@@ -143,7 +143,10 @@ pub async fn post_register(
 
 /// Returns all currently active streams.
 #[get("/streams")]
-pub async fn get_streams(config: &State<Config>) -> Result<Json<Vec<StreamResp>>, ReqwestError> {
+pub async fn get_streams(
+    config: &State<Config>,
+    mut db: Connection<Mitts>,
+) -> Result<Json<Vec<StreamResp>>, ReqwestError> {
     let mut url = config.ome_url.clone();
     url.set_path("v1/vhosts/default/apps/stream/streams");
 
@@ -159,14 +162,22 @@ pub async fn get_streams(config: &State<Config>) -> Result<Json<Vec<StreamResp>>
         .json()
         .await?;
 
-    let streams: Vec<StreamResp> = body
-        .response
-        .into_iter()
-        .map(|e| StreamResp {
-            username: e.clone(),
-            display_name: e,
-            title: None,
-        })
-        .collect();
+    // Return early if there are no streams
+    if body.response.is_empty() {
+        return Ok(Json(Vec::new()));
+    }
+
+    let mut streams: Vec<StreamResp> = Vec::new();
+    // SQLx sadly doesn't support IN queries, so we have to do this the hard way
+    for s in body.response {
+        match User::from_name(&s, &mut *db).await {
+            Some(u) => streams.push(StreamResp {
+                username: u.username,
+                display_name: u.display_name,
+                title: u.stream_title,
+            }),
+            None => (),
+        };
+    }
     Ok(Json(streams))
 }
