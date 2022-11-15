@@ -1,5 +1,8 @@
 //! All the various structs for JSON/db support.
 
+use std::{borrow::Cow, str::FromStr};
+
+use chrono::{DateTime, FixedOffset};
 use rocket::{
     http::Status,
     outcome::Outcome,
@@ -88,8 +91,6 @@ impl Admission {
 /// The representation of a user in the database.
 #[derive(Debug)]
 pub struct User {
-    /// V4 UUID.
-    pub id: String,
     /// Username, will be used for URL rewrite.
     pub username: String,
     /// The name that gets displayed in the UI.
@@ -123,29 +124,13 @@ impl User {
             None => false,
         }
     }
-    /// Find a User in the database for a given token.
-    pub async fn from_session(token: &str, db: &mut Db) -> Option<Self> {
-        sqlx::query_as!(
-            User,
-            "
-        SELECT users.* FROM users
-        LEFT JOIN sessions
-        ON users.id = sessions.user_id
-        WHERE session = ?
-        ",
-            token
-        )
-        .fetch_one(db)
-        .await
-        .ok()
-    }
     /// Find a User from the database from the username.
     pub async fn from_name(username: &str, db: &mut Db) -> Option<Self> {
         sqlx::query_as!(
             User,
             "
         SELECT * FROM users
-        WHERE users.username = ?
+        WHERE users.username = ? COLLATE NOCASE
         ",
             username
         )
@@ -154,6 +139,7 @@ impl User {
         .ok()
     }
     /// Check if a given username can be found in the database.
+    /// This is case-insensitive.
     pub async fn username_exists(username: &str, db: &mut Db) -> bool {
         Self::from_name(username, db).await.is_some()
     }
@@ -177,12 +163,18 @@ impl<'r> FromRequest<'r> for User {
 
         let cookie: Option<String> = req
             .cookies()
-            .get("user_session")
+            .get_private("user_session")
             .and_then(|c| c.value().parse().ok());
 
         match cookie {
             Some(token) => {
-                let user = User::from_session(&token, &mut *db).await;
+                let session = SessionCookie::from_str(&token).unwrap_or_default();
+                if !session.is_valid() {
+                    return Outcome::Failure((Status::Unauthorized, "Invalid session"));
+                }
+
+                let user = session.get_user(&mut db).await;
+
                 match user {
                     Some(user) => Outcome::Success(user),
                     None => Outcome::Failure((Status::Unauthorized, "No user found in database")),
@@ -196,8 +188,6 @@ impl<'r> FromRequest<'r> for User {
 #[derive(Serialize, Debug)]
 /// Like the [User] struct, but without the hashed password. Inteded to be sent to the frontend.
 pub struct SendableUser {
-    /// V4 UUID.
-    pub id: String,
     /// URL-safe Username, used for streaming.
     pub username: String,
     /// Name that gets displayed in the UI.
@@ -211,7 +201,6 @@ pub struct SendableUser {
 impl From<User> for SendableUser {
     fn from(user: User) -> Self {
         Self {
-            id: user.id,
             username: user.username,
             display_name: user.display_name,
             stream_key: user.stream_key,
@@ -277,5 +266,47 @@ impl<'r> Responder<'r, 'r> for ReqwestError {
 impl From<reqwest::Error> for ReqwestError {
     fn from(e: reqwest::Error) -> Self {
         Self(e)
+    }
+}
+
+/// Struct to fill the encrypted session cookies.
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct SessionCookie {
+    /// The corresponding username.
+    u: String,
+    /// The time until the cookie expires.
+    t: DateTime<FixedOffset>,
+}
+
+impl SessionCookie {
+    /// Create a new session cookie.
+    pub fn new(username: String, valid_until: DateTime<FixedOffset>) -> Self {
+        Self {
+            u: username,
+            t: valid_until,
+        }
+    }
+    /// Check if the session cookie is still valid.
+    pub fn is_valid(&self) -> bool {
+        self.t >= chrono::offset::Utc::now()
+    }
+    /// Get the user from the database.
+    pub async fn get_user(&self, db: &mut Db) -> Option<User> {
+        User::from_name(&self.u, db).await
+    }
+}
+
+impl<'c> From<SessionCookie> for Cow<'c, str> {
+    fn from(val: SessionCookie) -> Self {
+        let cookie = serde_json::to_string(&val).unwrap_or_default();
+        Cow::from(cookie)
+    }
+}
+
+impl FromStr for SessionCookie {
+    type Err = serde_json::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_json::from_str(s)
     }
 }

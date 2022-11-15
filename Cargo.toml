@@ -12,16 +12,16 @@ lto = true
 codegen-units = 1
 
 [dependencies]
-rocket = { git = "https://github.com/SergioBenitez/Rocket", branch = "master", features = ["json"] }
+rocket = { git = "https://github.com/SergioBenitez/Rocket", branch = "master", features = ["json", "secrets"] }
 rocket_db_pools = { git = "https://github.com/SergioBenitez/Rocket", branch = "master", features = ["sqlx_sqlite"] }
 sqlx = { version = "0.6", default-features = false, features = ["macros", "offline", "migrate"] }
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 url = { version = "2.2", features = ["serde"] }
-chrono = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
 rand_core = "0.6"
 argon2 = "0.4"
 base64 = "0.13"
 rand = "0.8"
-uuid = { version = "1.1", features = ["v4", "fast-rng"] }
 rust-embed = "6.4"
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }

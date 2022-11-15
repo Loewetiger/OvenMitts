@@ -1,5 +1,6 @@
 //! The routes for the webserver.
 
+use chrono::DateTime;
 use rocket::{
     http::{Cookie, CookieJar, SameSite, Status},
     response::status,
@@ -11,11 +12,11 @@ use rocket_db_pools::Connection;
 
 use crate::{
     admission::handle_admission,
-    crypto::{gen_stream_key, hash_password, random_data, verify_password},
+    crypto::{gen_stream_key, hash_password, verify_password},
     db::Mitts,
     objects::{
-        Admission, AdmissionResponse, Config, LoginUser, ReqwestError, SendableUser, StreamResp,
-        Streams, User,
+        Admission, AdmissionResponse, Config, LoginUser, ReqwestError, SendableUser, SessionCookie,
+        StreamResp, Streams, User,
     },
 };
 
@@ -45,9 +46,6 @@ pub async fn post_login(
     mut db: Connection<Mitts>,
     cookies: &CookieJar<'_>,
 ) -> Status {
-    if cookies.get("user_session").is_some() {
-        return Status::Ok;
-    };
     let user = match User::from_name(&creds.username, &mut *db).await {
         Some(u) => u,
         None => return Status::NotFound,
@@ -55,26 +53,22 @@ pub async fn post_login(
     let valid_password =
         verify_password(&user.password, creds.password.as_bytes()).unwrap_or(false);
     if valid_password {
-        let token = base64::encode(random_data(64));
-        if sqlx::query!(
-            "INSERT INTO sessions(session, user_id) VALUES(?, ?)",
-            token,
-            user.id
-        )
-        .execute(&mut *db)
-        .await
-        .is_err()
-        {
-            return Status::InternalServerError;
-        };
+        let time = OffsetDateTime::now_utc() + Duration::days(14);
+        let iso8601 = time
+            .format(&rocket::time::format_description::well_known::iso8601::Iso8601::DEFAULT)
+            .unwrap_or("1997-11-21T09:55:06.000000000-06:00".into());
+        let cookie = SessionCookie::new(
+            user.username,
+            DateTime::parse_from_rfc3339(&iso8601).unwrap_or_default(),
+        );
 
-        let auth_cookie = Cookie::build("user_session", token)
+        let auth_cookie = Cookie::build("user_session", cookie)
             .path("/")
             .http_only(true)
             .secure(true)
             .same_site(SameSite::Lax)
-            .expires(OffsetDateTime::now_utc() + Duration::days(14));
-        cookies.add(auth_cookie.finish());
+            .expires(time);
+        cookies.add_private(auth_cookie.finish());
         Status::Ok
     } else {
         Status::Unauthorized
@@ -83,21 +77,9 @@ pub async fn post_login(
 
 /// Logout endpoint. Deletes the session cookie, as well as the session from the database.
 #[post("/user/logout")]
-pub async fn post_logout(cookies: &CookieJar<'_>, mut db: Connection<Mitts>) -> Status {
-    match cookies.get("user_session") {
-        Some(c) => {
-            let token = c.value();
-            cookies.remove(Cookie::named("user_session"));
-            match sqlx::query!("DELETE FROM sessions WHERE session = ?", token)
-                .execute(&mut *db)
-                .await
-            {
-                Ok(_) => Status::Ok,
-                Err(_) => Status::InternalServerError,
-            }
-        }
-        None => Status::Ok,
-    }
+pub async fn post_logout(cookies: &CookieJar<'_>) -> Status {
+    cookies.remove_private(Cookie::named("user_session"));
+    Status::Ok
 }
 
 /// Register endpoint. Creates a new user in the database.
@@ -119,11 +101,9 @@ pub async fn post_register(
             ))
         }
     };
-    let id = uuid::Uuid::new_v4().to_string();
     let stream_key = gen_stream_key();
     if sqlx::query!(
-        "INSERT INTO users(id, username, display_name, password, stream_key) VALUES(?, ?, ?, ?, ?)",
-        id,
+        "INSERT INTO users(username, display_name, password, stream_key) VALUES(?, ?, ?, ?)",
         creds.username,
         creds.username,
         password_hash,
