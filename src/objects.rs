@@ -204,6 +204,8 @@ pub struct SendableUser {
     pub display_name: String,
     /// Stream key, used for displaying.
     pub stream_key: String,
+    /// Optional stream title.
+    pub stream_title: Option<String>,
 }
 
 impl From<User> for SendableUser {
@@ -213,6 +215,7 @@ impl From<User> for SendableUser {
             username: user.username,
             display_name: user.display_name,
             stream_key: user.stream_key,
+            stream_title: user.stream_title,
         }
     }
 }
