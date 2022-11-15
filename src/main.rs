@@ -2,13 +2,11 @@
 extern crate rocket;
 
 use ovenmitts::objects::Config;
-//use ovenmitts::auth::extract_permissions;
 use rocket::fairing::AdHoc;
 use rocket::figment::providers::{Env, Format, Toml};
 use rocket::figment::value::{Map, Value};
 use rocket::figment::{map, Figment, Profile};
 use rocket_db_pools::Database;
-//use rocket_grants::GrantsFairing;
 
 use ovenmitts::db::{run_migrations, Mitts};
 use ovenmitts::routes::{
@@ -41,9 +39,6 @@ fn rocket() -> _ {
                 get_assets
             ],
         )
-        /*.attach(GrantsFairing::with_extractor_fn(|req| {
-            Box::pin(extract_permissions(req))
-        }))*/
         .attach(Mitts::init())
         .attach(AdHoc::try_on_ignite("SQLx Migrations", run_migrations))
         .attach(AdHoc::config::<Config>())
