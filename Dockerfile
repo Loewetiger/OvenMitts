@@ -8,7 +8,7 @@ RUN apk add --no-cache musl-dev
 WORKDIR /app
 COPY ./ /app
 # do a release build
-RUN cargo build --release
+RUN --mount=type=cache,target=/usr/local/cargo/registry cargo build --release
 
 # use a plain alpine image, the alpine version needs to match the builder
 FROM alpine:3.16
