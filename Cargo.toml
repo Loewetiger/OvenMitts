@@ -15,7 +15,6 @@ codegen-units = 1
 rocket = { git = "https://github.com/SergioBenitez/Rocket", branch = "master", features = ["json"] }
 rocket_db_pools = { git = "https://github.com/SergioBenitez/Rocket", branch = "master", features = ["sqlx_sqlite"] }
 sqlx = { version = "0.6", default-features = false, features = ["macros", "offline", "migrate"] }
-rocket-grants = "0.5.0-rc"
 serde = { version = "1.0", features = ["derive"] }
 url = { version = "2.2", features = ["serde"] }
 chrono = "0.4"
