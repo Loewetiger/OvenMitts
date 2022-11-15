@@ -125,6 +125,7 @@ impl User {
         }
     }
     /// Find a User from the database from the username.
+    /// Case-insensitive.
     pub async fn from_name(username: &str, db: &mut Db) -> Option<Self> {
         sqlx::query_as!(
             User,

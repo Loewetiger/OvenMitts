@@ -18,6 +18,7 @@ use crate::{
         Admission, AdmissionResponse, Config, LoginUser, ReqwestError, SendableUser, SessionCookie,
         StreamResp, Streams, User,
     },
+    USERNAME_RE,
 };
 
 /// Used by OvenMediaEngine's [admission webhooks](https://airensoft.gitbook.io/ovenmediaengine/access-control/admission-webhooks).
@@ -90,6 +91,12 @@ pub async fn post_register(
 ) -> Result<(), status::Custom<&'static str>> {
     if User::username_exists(&creds.username, &mut *db).await {
         return Err(status::Custom(Status::Conflict, "Username already exists"));
+    }
+    if !USERNAME_RE.is_match(&creds.username) {
+        return Err(status::Custom(
+            Status::BadRequest,
+            "Username contains invalid characters",
+        ));
     }
 
     let password_hash = match hash_password(creds.password.as_bytes()) {
