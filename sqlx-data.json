@@ -1,56 +1,88 @@
 {
   "db": "SQLite",
-  "349b1d94ecda9841b876734bb179804adfbb1fa549faca11f232112ab71ebfc3": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 2
-      }
-    },
-    "query": "INSERT INTO sessions(session, user_id) VALUES(?, ?)"
-  },
-  "49232ba21033838220a89cb4dd00b74c19f6ee56d8da0c85538e96c1ccd19ecd": {
+  "4161bfc49e87d016cce75cd39e8dbe9657da5fcaf1baab66e240ad02c8596960": {
     "describe": {
       "columns": [
         {
-          "name": "id",
+          "name": "username",
           "ordinal": 0,
           "type_info": "Text"
         },
         {
-          "name": "username",
+          "name": "display_name",
           "ordinal": 1,
           "type_info": "Text"
         },
         {
-          "name": "display_name",
+          "name": "password",
           "ordinal": 2,
           "type_info": "Text"
         },
         {
-          "name": "password",
+          "name": "stream_key",
           "ordinal": 3,
           "type_info": "Text"
         },
         {
-          "name": "stream_key",
+          "name": "permissions",
           "ordinal": 4,
           "type_info": "Text"
         },
         {
-          "name": "permissions",
-          "ordinal": 5,
-          "type_info": "Text"
-        },
-        {
           "name": "stream_title",
-          "ordinal": 6,
+          "ordinal": 5,
           "type_info": "Text"
         }
       ],
       "nullable": [
         false,
+        false,
+        false,
+        false,
+        true,
+        true
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "\n        SELECT * FROM users\n        WHERE users.username = ? COLLATE NOCASE\n        "
+  },
+  "49232ba21033838220a89cb4dd00b74c19f6ee56d8da0c85538e96c1ccd19ecd": {
+    "describe": {
+      "columns": [
+        {
+          "name": "username",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "display_name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "password",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "stream_key",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "permissions",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "stream_title",
+          "ordinal": 5,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
         false,
         false,
         false,
@@ -64,132 +96,14 @@
     },
     "query": "SELECT * FROM users WHERE stream_key = ?"
   },
-  "6c5a7909884228d5309a054a0d62b8c95d0348c6aec71c37c0b877c19a7cec53": {
+  "88edaf19c7bf77eaa367dd3764c82860c5d05110eabb76d17521d34c192733c1": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
-        "Right": 5
+        "Right": 4
       }
     },
-    "query": "INSERT INTO users(id, username, display_name, password, stream_key) VALUES(?, ?, ?, ?, ?)"
-  },
-  "9a8553670477cb01687d4cc440739b1f93ca49ba907ef275bcd1d3996a676f48": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "username",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "display_name",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "password",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "stream_key",
-          "ordinal": 4,
-          "type_info": "Text"
-        },
-        {
-          "name": "permissions",
-          "ordinal": 5,
-          "type_info": "Text"
-        },
-        {
-          "name": "stream_title",
-          "ordinal": 6,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true
-      ],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "\n        SELECT * FROM users\n        WHERE users.username = ?\n        "
-  },
-  "bed2933711c04025faff23dbf82af3ec15a9f4ed6e312cedbc74004c950e0822": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "DELETE FROM sessions WHERE session = ?"
-  },
-  "c30dd04ad4a15b8a2c070af7a4bd36896ff97ebcd700fb28cbb20c988f671b55": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "username",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "display_name",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "password",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "stream_key",
-          "ordinal": 4,
-          "type_info": "Text"
-        },
-        {
-          "name": "permissions",
-          "ordinal": 5,
-          "type_info": "Text"
-        },
-        {
-          "name": "stream_title",
-          "ordinal": 6,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true
-      ],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "\n        SELECT users.* FROM users\n        LEFT JOIN sessions\n        ON users.id = sessions.user_id\n        WHERE session = ?\n        "
+    "query": "INSERT INTO users(username, display_name, password, stream_key) VALUES(?, ?, ?, ?)"
   }
 }
