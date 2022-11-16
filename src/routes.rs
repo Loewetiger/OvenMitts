@@ -1,5 +1,7 @@
 //! The routes for the webserver.
 
+use std::str::FromStr;
+
 use chrono::DateTime;
 use rocket::{
     http::{Cookie, CookieJar, SameSite, Status},
@@ -16,7 +18,7 @@ use crate::{
     db::Mitts,
     objects::{
         Admission, AdmissionResponse, Config, LoginUser, ReqwestError, SendableUser, SessionCookie,
-        StreamResp, Streams, User,
+        SqlxError, StreamResp, Streams, User, UserUpdate,
     },
     USERNAME_RE,
 };
@@ -126,6 +128,97 @@ pub async fn post_register(
         ));
     };
     Ok(())
+}
+
+/// Change the settings of a user.
+#[post("/user/update", data = "<body>")]
+pub async fn update_user(
+    mut db: Connection<Mitts>,
+    cookies: &CookieJar<'_>,
+    body: Json<UserUpdate>,
+) -> Result<Status, SqlxError> {
+    // warning: this is about to get ugly D:
+    // get the current user
+    let session_cookie = match cookies.get_private("user_session") {
+        Some(c) => SessionCookie::from_str(c.value()).unwrap_or_default(),
+        None => return Ok(Status::Unauthorized),
+    };
+    let logged_user = match session_cookie.get_user(&mut *db).await {
+        Some(u) => u,
+        None => return Ok(Status::Unauthorized),
+    };
+
+    // get the user to be updated
+    if body.username.is_some() && !logged_user.is_admin() {
+        return Ok(Status::Unauthorized);
+    }
+
+    let user = match &body.username {
+        Some(u) => User::from_name(u, &mut *db).await,
+        None => User::from_name(&logged_user.username, &mut *db).await,
+    };
+    let user = match user {
+        Some(u) => u,
+        None => return Ok(Status::NotFound),
+    };
+
+    // check the individual fields
+    if let Some(dn) = &body.display_name {
+        sqlx::query!(
+            "UPDATE users SET display_name = ? WHERE username = ?",
+            dn,
+            user.username
+        )
+        .execute(&mut *db)
+        .await?;
+    }
+
+    if let Some(stream_title) = &body.stream_title {
+        sqlx::query!(
+            "UPDATE users SET stream_title = ? WHERE username = ?",
+            stream_title,
+            user.username
+        )
+        .execute(&mut *db)
+        .await?;
+    }
+
+    if body.old_password.is_some() && body.new_password.is_some() {
+        let op = body.old_password.as_ref().unwrap();
+        let np = body.new_password.as_ref().unwrap();
+
+        // check if the old password is correct
+        if !verify_password(&user.password, op.as_bytes()).unwrap_or(false) {
+            return Ok(Status::Unauthorized);
+        }
+        // hash the new password
+        let password_hash = match hash_password(np.as_bytes()) {
+            Ok(h) => h,
+            Err(_) => return Ok(Status::InternalServerError),
+        };
+        sqlx::query!(
+            "UPDATE users SET password = ? WHERE username = ?",
+            password_hash,
+            user.username
+        )
+        .execute(&mut *db)
+        .await?;
+    }
+
+    if logged_user.is_admin() {
+        if let Some(permissions) = &body.permissions {
+            sqlx::query!(
+                "UPDATE users SET permissions = ? WHERE username = ?",
+                permissions,
+                user.username
+            )
+            .execute(&mut *db)
+            .await?;
+        }
+    } else if body.permissions.is_some() {
+        return Ok(Status::Unauthorized);
+    }
+    Ok(Status::Ok)
 }
 
 /// Returns all currently active streams.

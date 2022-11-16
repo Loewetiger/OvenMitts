@@ -10,7 +10,7 @@ use rocket_db_pools::Database;
 
 use ovenmitts::db::{run_migrations, Mitts};
 use ovenmitts::routes::{
-    get_streams, get_user, post_admission, post_login, post_logout, post_register,
+    get_streams, get_user, post_admission, post_login, post_logout, post_register, update_user,
 };
 use ovenmitts::static_files::{get_assets, get_index, get_indexjs};
 
@@ -34,6 +34,7 @@ fn rocket() -> _ {
                 post_login,
                 post_logout,
                 post_register,
+                update_user,
                 get_streams,
                 get_index,
                 get_indexjs,
