@@ -1,3 +1,11 @@
+# build the webapp
+FROM node:alpine
+WORKDIR /web
+COPY ./web /web
+# install dependencies
+RUN yarn
+RUN yarn build
+
 # Start with a rust alpine image
 FROM rust:1-alpine3.16
 # This is important, see https://github.com/rust-lang/docker-rust/issues/85
@@ -7,6 +15,8 @@ RUN apk add --no-cache musl-dev
 # set the workdir and copy the source into it
 WORKDIR /app
 COPY ./ /app
+# copy the webapp build from the previous stage
+COPY --from=0 /web/dist /app/dist
 # do a release build
 RUN --mount=type=cache,target=/usr/local/cargo/registry cargo build --release
 
@@ -19,6 +29,6 @@ ENV MITTS_CONFIG /config/mitts.toml
 # if needed, install additional dependencies here
 RUN apk add --no-cache libgcc
 # copy the binary into the final image
-COPY --from=0 /app/target/release/ovenmitts .
+COPY --from=1 /app/target/release/ovenmitts .
 # set the binary as entrypoint
 ENTRYPOINT ["/ovenmitts"]
