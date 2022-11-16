@@ -12,7 +12,7 @@ use ovenmitts::db::{run_migrations, Mitts};
 use ovenmitts::routes::{
     get_streams, get_user, post_admission, post_login, post_logout, post_register,
 };
-use ovenmitts::static_files::{get_assets, get_index};
+use ovenmitts::static_files::{get_assets, get_index, get_indexjs};
 
 #[launch]
 fn rocket() -> _ {
@@ -36,6 +36,7 @@ fn rocket() -> _ {
                 post_register,
                 get_streams,
                 get_index,
+                get_indexjs,
                 get_assets
             ],
         )

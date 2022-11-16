@@ -247,6 +247,10 @@ pub struct Config {
     pub access_token: String,
     /// The key used by OME to sign the admission requests.
     pub admission_key: String,
+    /// The url base to access OvenMitts.
+    pub base_url: Url,
+    /// Websocket url for the player.
+    pub ws_url: Url,
 }
 
 /// Wrapper type for reqwest to simplify error handling within rocket.

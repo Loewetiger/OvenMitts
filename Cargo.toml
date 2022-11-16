@@ -23,7 +23,8 @@ rand_core = "0.6"
 argon2 = "0.4"
 base64 = "0.13"
 rand = "0.8"
-rust-embed = "6.4"
+rust-embed = { version = "6.4", features = ["include-exclude"] }
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
 regex = "1.7"
 lazy_static = "1.4"
+sailfish = "0.5"
