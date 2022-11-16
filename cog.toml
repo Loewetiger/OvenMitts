@@ -1,0 +1,23 @@
+ignore_merge_commits = true
+branch_whitelist = ["main"]
+pre_bump_hooks = [
+  "cargo set-version {{version}}",
+  "git add :/Cargo.lock",
+]
+post_bump_hooks = [
+  "git push",
+  "git push origin v{{version}}",
+]
+tag_prefix = "v"
+
+[commit_types]
+
+[changelog]
+path = "CHANGELOG.md"
+template = "remote"
+remote = "github.com"
+repository = "OvenMitts"
+owner = "Loewetiger"
+authors = [{ signature = "Loewetiger", username = "Loewetiger" }]
+
+[bump_profiles]
