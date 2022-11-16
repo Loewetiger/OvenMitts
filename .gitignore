@@ -12,7 +12,7 @@
 mitts.*
 
 # Ignore the website directory
-dist/
+dist
 
 # Exclude OvenMitts' config file
 Mitts.toml
