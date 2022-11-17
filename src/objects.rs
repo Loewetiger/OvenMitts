@@ -192,6 +192,9 @@ pub struct SendableUser {
     pub stream_key: String,
     /// Optional stream title.
     pub stream_title: Option<String>,
+    /// The current permissions of the user.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub permissions: Option<String>,
 }
 
 impl From<User> for SendableUser {
@@ -201,6 +204,7 @@ impl From<User> for SendableUser {
             display_name: user.display_name,
             stream_key: user.stream_key,
             stream_title: user.stream_title,
+            permissions: user.permissions,
         }
     }
 }

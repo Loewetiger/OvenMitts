@@ -150,7 +150,7 @@ pub async fn update_user(
 
     // get the user to be updated
     if body.username.is_some() && !logged_user.is_admin() {
-        return Ok(Status::Unauthorized);
+        return Ok(Status::Forbidden);
     }
 
     let user = match &body.username {
@@ -216,9 +216,33 @@ pub async fn update_user(
             .await?;
         }
     } else if body.permissions.is_some() {
-        return Ok(Status::Unauthorized);
+        return Ok(Status::Forbidden);
     }
     Ok(Status::Ok)
+}
+
+/// Returns all the users in the database.
+#[get("/user/list")]
+pub async fn list_users(
+    mut db: Connection<Mitts>,
+    user: User,
+) -> Result<Json<Vec<SendableUser>>, Status> {
+    if !user.is_admin() {
+        return Err(Status::Forbidden);
+    }
+    let users = sqlx::query_as!(User, "SELECT * FROM users")
+        .fetch_all(&mut *db)
+        .await
+        .unwrap_or_default();
+    Ok(Json(
+        users
+            .into_iter()
+            .map(|mut u| {
+                u.stream_key = String::new();
+                u.into()
+            })
+            .collect(),
+    ))
 }
 
 /// Returns all currently active streams.
