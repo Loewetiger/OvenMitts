@@ -183,27 +183,41 @@ pub async fn update_user(
         .await?;
     }
 
-    if body.old_password.is_some() && body.new_password.is_some() {
-        let op = body.old_password.as_ref().unwrap();
-        let np = body.new_password.as_ref().unwrap();
-
-        // check if the old password is correct
-        if !verify_password(&user.password, op.as_bytes()).unwrap_or(false) {
-            return Ok(Status::Unauthorized);
+    let new_password: Option<String> = match (body.old_password.clone(), body.new_password.clone())
+    {
+        (None, Some(np)) => {
+            if logged_user.is_admin() {
+                if let Ok(pw) = hash_password(np.as_bytes()) {
+                    Some(pw)
+                } else {
+                    return Ok(Status::InternalServerError);
+                }
+            } else {
+                return Ok(Status::Forbidden);
+            }
         }
-        // hash the new password
-        let password_hash = match hash_password(np.as_bytes()) {
-            Ok(h) => h,
-            Err(_) => return Ok(Status::InternalServerError),
-        };
+        (Some(op), Some(np)) => {
+            if verify_password(&user.password, op.as_bytes()).unwrap_or(false) {
+                if let Ok(pw) = hash_password(np.as_bytes()) {
+                    Some(pw)
+                } else {
+                    return Ok(Status::InternalServerError);
+                }
+            } else {
+                return Ok(Status::Forbidden);
+            }
+        }
+        _ => None,
+    };
+    if let Some(pw) = new_password {
         sqlx::query!(
             "UPDATE users SET password = ? WHERE username = ?",
-            password_hash,
+            pw,
             user.username
         )
         .execute(&mut *db)
         .await?;
-    }
+    };
 
     if logged_user.is_admin() {
         if let Some(permissions) = &body.permissions {
