@@ -1,5 +1,53 @@
 {
   "db": "SQLite",
+  "26e7e05427bc7dabcd7815d27764fda2baf4cfe60a2d2d6ee2a1f773dccbbce2": {
+    "describe": {
+      "columns": [
+        {
+          "name": "username",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "display_name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "password",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "stream_key",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "permissions",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "stream_title",
+          "ordinal": 5,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        true
+      ],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "SELECT * FROM users"
+  },
   "4161bfc49e87d016cce75cd39e8dbe9657da5fcaf1baab66e240ad02c8596960": {
     "describe": {
       "columns": [
@@ -105,5 +153,45 @@
       }
     },
     "query": "INSERT INTO users(username, display_name, password, stream_key) VALUES(?, ?, ?, ?)"
+  },
+  "8d12b961445cba59cdc96b30b41604a07d89c0422d8606b29c5ee0c970c0a3bc": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "UPDATE users SET stream_title = ? WHERE username = ?"
+  },
+  "b6093f34d0e0ed711f7ecbb4d763298c8be7f2f2bab65556bb46062c6cd3a83f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "UPDATE users SET display_name = ? WHERE username = ?"
+  },
+  "c595658ae1b50df950e77c917f0eb66459ce6738420548cf43f86cc5c44905db": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "UPDATE users SET permissions = ? WHERE username = ?"
+  },
+  "ec9debea3b0c0a0a0ec9b945922e4f44e0c6dd8898c4e3eb4ff902d7cb33972d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "UPDATE users SET password = ? WHERE username = ?"
   }
 }

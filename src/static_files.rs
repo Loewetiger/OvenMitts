@@ -15,9 +15,9 @@ struct Asset;
 
 #[derive(TemplateOnce)]
 #[template(path = "index.js", escape = false, delimiter = '@')]
-struct JsReplace {
-    base_url: String,
-    ws_url: String,
+struct JsReplace<'a> {
+    base_url: &'a str,
+    ws_url: &'a str,
 }
 
 /// Serves the `index.html` file.
@@ -31,8 +31,8 @@ pub fn get_index() -> Option<RawHtml<Cow<'static, [u8]>>> {
 #[get("/index.js")]
 pub fn get_indexjs(config: &State<Config>) -> Option<(ContentType, String)> {
     let ctx = JsReplace {
-        base_url: config.base_url.clone().into(),
-        ws_url: config.ws_url.clone().into(),
+        base_url: config.base_url.as_str(),
+        ws_url: config.ws_url.as_str(),
     };
     let js = ctx.render_once().ok()?;
     Some((ContentType::JavaScript, js))

@@ -106,23 +106,18 @@ pub struct User {
 }
 
 impl User {
-    /// Returns a Vec of all the permissions.
-    pub fn permission_vec(&self) -> Option<Vec<String>> {
-        Some(
-            self.permissions
-                .as_ref()?
-                .split(',')
-                .map(std::string::ToString::to_string)
-                .collect(),
-        )
-    }
     /// Check whether the user has a specified permission
     pub fn has_permission(&self, permission: String) -> bool {
-        let perms = self.permission_vec();
-        match perms {
-            Some(v) => v.contains(&permission),
+        return match self.permissions {
+            Some(ref permissions) => {
+                permissions.contains(&permission) || permissions.contains("IS_ADMIN")
+            }
             None => false,
-        }
+        };
+    }
+    /// Check whether the user is an admin
+    pub fn is_admin(&self) -> bool {
+        self.has_permission("IS_AMDIN".into())
     }
     /// Find a User from the database from the username.
     /// Case-insensitive.
@@ -197,6 +192,9 @@ pub struct SendableUser {
     pub stream_key: String,
     /// Optional stream title.
     pub stream_title: Option<String>,
+    /// The current permissions of the user.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub permissions: Option<String>,
 }
 
 impl From<User> for SendableUser {
@@ -206,6 +204,7 @@ impl From<User> for SendableUser {
             display_name: user.display_name,
             stream_key: user.stream_key,
             stream_title: user.stream_title,
+            permissions: user.permissions,
         }
     }
 }
@@ -253,6 +252,23 @@ pub struct Config {
     pub ws_url: Url,
 }
 
+/// The struct used to update user attributes.
+#[derive(Debug, Deserialize)]
+pub struct UserUpdate {
+    /// The user to be updated. If None, the currently logged in user will be used.
+    pub username: Option<String>,
+    /// The new display name.
+    pub display_name: Option<String>,
+    /// The new password.
+    pub new_password: Option<String>,
+    /// Old password, required to change the password.
+    pub old_password: Option<String>,
+    /// The new stream title.
+    pub stream_title: Option<String>,
+    /// The permissions, can only be set by admins.
+    pub permissions: Option<String>,
+}
+
 /// Wrapper type for reqwest to simplify error handling within rocket.
 pub struct ReqwestError(reqwest::Error);
 
@@ -270,6 +286,26 @@ impl<'r> Responder<'r, 'r> for ReqwestError {
 
 impl From<reqwest::Error> for ReqwestError {
     fn from(e: reqwest::Error) -> Self {
+        Self(e)
+    }
+}
+
+/// Wrapper type for reqwest to simplify error handling within rocket.
+pub struct SqlxError(sqlx::Error);
+
+impl<'r> Responder<'r, 'r> for SqlxError {
+    fn respond_to(self, _: &'r Request<'_>) -> rocket::response::Result<'r> {
+        let err_msg = format!("Database error: {}", self.0);
+
+        Ok(Response::build()
+            .sized_body(err_msg.len(), std::io::Cursor::new(err_msg))
+            .status(Status::InternalServerError)
+            .finalize())
+    }
+}
+
+impl From<sqlx::error::Error> for SqlxError {
+    fn from(e: sqlx::error::Error) -> Self {
         Self(e)
     }
 }
