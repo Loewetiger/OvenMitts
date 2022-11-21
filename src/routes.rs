@@ -5,7 +5,6 @@ use std::str::FromStr;
 use chrono::DateTime;
 use rocket::{
     http::{Cookie, CookieJar, SameSite, Status},
-    response::status,
     serde::json::Json,
     time::{Duration, OffsetDateTime},
     State,
@@ -16,9 +15,10 @@ use crate::{
     admission::handle_admission,
     crypto::{gen_stream_key, hash_password, verify_password},
     db::Mitts,
+    errors::OMError,
     objects::{
-        Admission, AdmissionResponse, Config, LoginUser, ReqwestError, SendableUser, SessionCookie,
-        SqlxError, StreamResp, Streams, User, UserUpdate,
+        Admission, AdmissionResponse, Config, LoginUser, SendableUser, SessionCookie, StreamResp,
+        Streams, User, UserUpdate,
     },
     USERNAME_RE,
 };
@@ -48,10 +48,10 @@ pub async fn post_login(
     creds: Json<LoginUser>,
     mut db: Connection<Mitts>,
     cookies: &CookieJar<'_>,
-) -> Status {
+) -> Result<(), OMError> {
     let user = match User::from_name(&creds.username, &mut *db).await {
         Some(u) => u,
-        None => return Status::NotFound,
+        None => return Err(OMError::NotFound(creds.username.clone())),
     };
     let valid_password =
         verify_password(&user.password, creds.password.as_bytes()).unwrap_or(false);
@@ -72,9 +72,9 @@ pub async fn post_login(
             .same_site(SameSite::Lax)
             .expires(time);
         cookies.add_private(auth_cookie.finish());
-        Status::Ok
+        Ok(())
     } else {
-        Status::Unauthorized
+        Err(OMError::InvalidSession)
     }
 }
 
@@ -90,28 +90,19 @@ pub async fn post_logout(cookies: &CookieJar<'_>) -> Status {
 pub async fn post_register(
     creds: Json<LoginUser>,
     mut db: Connection<Mitts>,
-) -> Result<(), status::Custom<&'static str>> {
+) -> Result<(), OMError> {
     if User::username_exists(&creds.username, &mut *db).await {
-        return Err(status::Custom(Status::Conflict, "Username already exists"));
+        return Err(OMError::NameTaken);
     }
     if !USERNAME_RE.is_match(&creds.username) {
-        return Err(status::Custom(
-            Status::BadRequest,
-            "Username contains invalid characters",
-        ));
+        return Err(OMError::InvalidName);
     }
 
-    let password_hash = match hash_password(creds.password.as_bytes()) {
-        Ok(h) => h,
-        Err(_) => {
-            return Err(status::Custom(
-                Status::InternalServerError,
-                "Failed to hash password",
-            ))
-        }
-    };
+    let password_hash =
+        hash_password(creds.password.as_bytes()).map_err(|_| OMError::ArgonError)?;
+
     let stream_key = gen_stream_key();
-    if sqlx::query!(
+    sqlx::query!(
         "INSERT INTO users(username, display_name, password, stream_key) VALUES(?, ?, ?, ?)",
         creds.username,
         creds.username,
@@ -119,14 +110,8 @@ pub async fn post_register(
         stream_key
     )
     .execute(&mut *db)
-    .await
-    .is_err()
-    {
-        return Err(status::Custom(
-            Status::InternalServerError,
-            "Failed to create user",
-        ));
-    };
+    .await?;
+
     Ok(())
 }
 
@@ -136,7 +121,7 @@ pub async fn update_user(
     mut db: Connection<Mitts>,
     cookies: &CookieJar<'_>,
     body: Json<UserUpdate>,
-) -> Result<Status, SqlxError> {
+) -> Result<Status, OMError> {
     // warning: this is about to get ugly D:
     // get the current user
     let session_cookie = match cookies.get_private("user_session") {
@@ -187,24 +172,16 @@ pub async fn update_user(
     {
         (None, Some(np)) => {
             if logged_user.is_admin() {
-                if let Ok(pw) = hash_password(np.as_bytes()) {
-                    Some(pw)
-                } else {
-                    return Ok(Status::InternalServerError);
-                }
+                hash_password(np.as_bytes()).ok()
             } else {
-                return Ok(Status::Forbidden);
+                return Err(OMError::NoPermission);
             }
         }
         (Some(op), Some(np)) => {
             if verify_password(&user.password, op.as_bytes()).unwrap_or(false) {
-                if let Ok(pw) = hash_password(np.as_bytes()) {
-                    Some(pw)
-                } else {
-                    return Ok(Status::InternalServerError);
-                }
+                hash_password(np.as_bytes()).ok()
             } else {
-                return Ok(Status::Forbidden);
+                return Err(OMError::InvalidPassword);
             }
         }
         _ => None,
@@ -240,14 +217,14 @@ pub async fn update_user(
 pub async fn list_users(
     mut db: Connection<Mitts>,
     user: User,
-) -> Result<Json<Vec<SendableUser>>, Status> {
+) -> Result<Json<Vec<SendableUser>>, OMError> {
     if !user.is_admin() {
-        return Err(Status::Forbidden);
+        return Err(OMError::NoPermission);
     }
     let users = sqlx::query_as!(User, "SELECT * FROM users")
         .fetch_all(&mut *db)
-        .await
-        .unwrap_or_default();
+        .await?;
+
     Ok(Json(
         users
             .into_iter()
@@ -264,7 +241,7 @@ pub async fn list_users(
 pub async fn get_streams(
     config: &State<Config>,
     mut db: Connection<Mitts>,
-) -> Result<Json<Vec<StreamResp>>, ReqwestError> {
+) -> Result<Json<Vec<StreamResp>>, OMError> {
     let mut url = config.ome_url.clone();
     url.set_path("v1/vhosts/default/apps/stream/streams");
 

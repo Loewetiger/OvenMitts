@@ -28,3 +28,4 @@ reqwest = { version = "0.11", default-features = false, features = ["json", "rus
 regex = "1.7"
 lazy_static = "1.4"
 sailfish = "0.5"
+thiserror = "1.0"
