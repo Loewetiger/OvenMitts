@@ -2,6 +2,22 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.4.0](https://github.com/Loewetiger/OvenMitts/compare/v0.3.0..v0.4.0) - 2022-11-21
+#### Bug Fixes
+- disable the default features of the chrono crate, thus avoiding using the `time 0.1.44` crate - ([288316d](https://github.com/Loewetiger/OvenMitts/commit/288316dc35353ed202954e53228f14f93e104952)) - [@Loewetiger](https://github.com/Loewetiger)
+#### Continuous Integration
+- run action on new tags and tag docker image accordingly - ([c080760](https://github.com/Loewetiger/OvenMitts/commit/c080760fec64f2c1061ee59a768182122af85b5e)) - [@Loewetiger](https://github.com/Loewetiger)
+#### Features
+- allow admin to always overwrite password - ([80ceab0](https://github.com/Loewetiger/OvenMitts/commit/80ceab0048c72ef600d81625cddc3958480f9e3d)) - [@Loewetiger](https://github.com/Loewetiger)
+- add route to list all users - ([c0af2f6](https://github.com/Loewetiger/OvenMitts/commit/c0af2f689777e8a58f1d36a7d59bad79545c423d)) - [@Loewetiger](https://github.com/Loewetiger)
+- add route to update user attributes - ([3d90a1a](https://github.com/Loewetiger/OvenMitts/commit/3d90a1a1527fd893b22b23da28c48d36ab587b51)) - [@Loewetiger](https://github.com/Loewetiger)
+#### Miscellaneous Chores
+- update sqlx-data - ([53f6ea3](https://github.com/Loewetiger/OvenMitts/commit/53f6ea3d493adbf6d2a2234a4122c8e39c4358d9)) - [@Loewetiger](https://github.com/Loewetiger)
+#### Refactoring
+- avoid unnecessary clone - ([85b61b4](https://github.com/Loewetiger/OvenMitts/commit/85b61b4236743f1e489b04d8bf7d7bbca0511e92)) - [@Loewetiger](https://github.com/Loewetiger)
+
+- - -
+
 ## [v0.3.0](https://github.com/Loewetiger/OvenMitts/compare/v0.2.0..v0.3.0) - 2022-11-16
 #### Bug Fixes
 - **(api)** add `stream_title` to SendableUser - ([0ed5aae](https://github.com/Loewetiger/OvenMitts/commit/0ed5aae14636157aa4026d0c6cc089f3a61717b3)) - [@Loewetiger](https://github.com/Loewetiger)
