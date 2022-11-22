@@ -2,6 +2,15 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.5.0](https://github.com/Loewetiger/OvenMitts/compare/v0.4.0..v0.5.0) - 2022-11-22
+#### Features
+- make better use of new error type in "/update" route - ([149094e](https://github.com/Loewetiger/OvenMitts/commit/149094e20867d80e3497286f163f5b722cfe564e)) - [@Loewetiger](https://github.com/Loewetiger)
+- derive clone for `User` - ([c67c102](https://github.com/Loewetiger/OvenMitts/commit/c67c1024e1042eae09cac479ed9e0c1f418a3123)) - [@Loewetiger](https://github.com/Loewetiger)
+#### Refactoring
+- improved error handling - ([58c1e09](https://github.com/Loewetiger/OvenMitts/commit/58c1e0959fe99d9802e61f954a4146d26656c276)) - [@Loewetiger](https://github.com/Loewetiger)
+
+- - -
+
 ## [v0.4.0](https://github.com/Loewetiger/OvenMitts/compare/v0.3.0..v0.4.0) - 2022-11-21
 #### Bug Fixes
 - disable the default features of the chrono crate, thus avoiding using the `time 0.1.44` crate - ([288316d](https://github.com/Loewetiger/OvenMitts/commit/288316dc35353ed202954e53228f14f93e104952)) - [@Loewetiger](https://github.com/Loewetiger)
