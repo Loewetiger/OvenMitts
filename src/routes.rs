@@ -74,7 +74,7 @@ pub async fn post_login(
         cookies.add_private(auth_cookie.finish());
         Ok(())
     } else {
-        Err(OMError::InvalidSession)
+        Err(OMError::InvalidPassword)
     }
 }
 
@@ -126,25 +126,25 @@ pub async fn update_user(
     // get the current user
     let session_cookie = match cookies.get_private("user_session") {
         Some(c) => SessionCookie::from_str(c.value()).unwrap_or_default(),
-        None => return Ok(Status::Unauthorized),
+        None => return Err(OMError::InvalidSession),
     };
     let logged_user = match session_cookie.get_user(&mut *db).await {
         Some(u) => u,
-        None => return Ok(Status::Unauthorized),
+        None => return Err(OMError::InvalidSession),
     };
 
     // get the user to be updated
     if body.username.is_some() && !logged_user.is_admin() {
-        return Ok(Status::Forbidden);
+        return Err(OMError::NoPermission);
     }
 
     let user = match &body.username {
         Some(u) => User::from_name(u, &mut *db).await,
-        None => User::from_name(&logged_user.username, &mut *db).await,
+        None => Some(logged_user.clone()),
     };
     let user = match user {
         Some(u) => u,
-        None => return Ok(Status::NotFound),
+        None => return Err(OMError::NotFound(body.username.clone().unwrap_or_default())),
     };
 
     // check the individual fields
@@ -207,7 +207,7 @@ pub async fn update_user(
             .await?;
         }
     } else if body.permissions.is_some() {
-        return Ok(Status::Forbidden);
+        return Err(OMError::NoPermission);
     }
     Ok(Status::Ok)
 }
