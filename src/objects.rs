@@ -88,7 +88,7 @@ impl Admission {
 }
 
 /// The representation of a user in the database.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct User {
     /// Username, will be used for URL rewrite.
     pub username: String,
