@@ -7,8 +7,7 @@ use rocket::{
     http::Status,
     outcome::Outcome,
     request::{self, FromRequest},
-    response::Responder,
-    Request, Response,
+    Request,
 };
 use rocket_db_pools::Connection;
 use serde::{Deserialize, Serialize};
@@ -89,7 +88,7 @@ impl Admission {
 }
 
 /// The representation of a user in the database.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct User {
     /// Username, will be used for URL rewrite.
     pub username: String,
@@ -267,47 +266,6 @@ pub struct UserUpdate {
     pub stream_title: Option<String>,
     /// The permissions, can only be set by admins.
     pub permissions: Option<String>,
-}
-
-/// Wrapper type for reqwest to simplify error handling within rocket.
-pub struct ReqwestError(reqwest::Error);
-
-impl<'r> Responder<'r, 'r> for ReqwestError {
-    fn respond_to(self, _: &'r Request<'_>) -> rocket::response::Result<'r> {
-        // Censor the url in the error message, since it might contain sensitive information.
-        let err_msg = self.0.without_url().to_string();
-
-        Ok(Response::build()
-            .sized_body(err_msg.len(), std::io::Cursor::new(err_msg))
-            .status(Status::InternalServerError)
-            .finalize())
-    }
-}
-
-impl From<reqwest::Error> for ReqwestError {
-    fn from(e: reqwest::Error) -> Self {
-        Self(e)
-    }
-}
-
-/// Wrapper type for reqwest to simplify error handling within rocket.
-pub struct SqlxError(sqlx::Error);
-
-impl<'r> Responder<'r, 'r> for SqlxError {
-    fn respond_to(self, _: &'r Request<'_>) -> rocket::response::Result<'r> {
-        let err_msg = format!("Database error: {}", self.0);
-
-        Ok(Response::build()
-            .sized_body(err_msg.len(), std::io::Cursor::new(err_msg))
-            .status(Status::InternalServerError)
-            .finalize())
-    }
-}
-
-impl From<sqlx::error::Error> for SqlxError {
-    fn from(e: sqlx::error::Error) -> Self {
-        Self(e)
-    }
 }
 
 /// Struct to fill the encrypted session cookies.

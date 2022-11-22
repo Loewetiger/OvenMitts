@@ -8,8 +8,9 @@ use regex::Regex;
 extern crate rocket;
 
 mod admission;
-pub mod crypto;
+mod crypto;
 pub mod db;
+mod errors;
 pub mod objects;
 pub mod routes;
 pub mod static_files;
