@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.6.0](https://github.com/Loewetiger/OvenMitts/compare/v0.5.0..v0.6.0) - 2022-11-30
+#### Refactoring
+- port the codebase to axum - ([b9a8512](https://github.com/Loewetiger/OvenMitts/commit/b9a8512a34bc0f2d6f3911aab08e5065e2fd832c)) - [@Loewetiger](https://github.com/Loewetiger)
+
+- - -
+
 ## [v0.5.0](https://github.com/Loewetiger/OvenMitts/compare/v0.4.0..v0.5.0) - 2022-11-22
 #### Features
 - make better use of new error type in "/update" route - ([149094e](https://github.com/Loewetiger/OvenMitts/commit/149094e20867d80e3497286f163f5b722cfe564e)) - [@Loewetiger](https://github.com/Loewetiger)
