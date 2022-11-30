@@ -12,20 +12,25 @@ lto = true
 codegen-units = 1
 
 [dependencies]
-rocket = { git = "https://github.com/SergioBenitez/Rocket", branch = "master", features = ["json", "secrets"] }
-rocket_db_pools = { git = "https://github.com/SergioBenitez/Rocket", branch = "master", features = ["sqlx_sqlite"] }
-sqlx = { version = "0.6", default-features = false, features = ["macros", "offline", "migrate"] }
+axum = { version = "0.6", features = ["json", "macros"] }
+axum-macros = "0.3"
+tokio = { version = "1.22", features = ["rt-multi-thread", "macros"] }
+sqlx = { version = "0.6", features = ["sqlite", "macros", "runtime-tokio-rustls", "migrate", "offline", "chrono"] }
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-url = { version = "2.2", features = ["serde"] }
+eyre = "0.6"
 chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
-rand_core = "0.6"
+url = { version = "2.2", features = ["serde"] }
+tower-cookies = "0.8"
+thiserror = "1.0"
 argon2 = "0.4"
-base64 = "0.13"
 rand = "0.8"
-rust-embed = { version = "6.4", features = ["include-exclude"] }
-reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
+rand_core = "0.6"
+base64 = "0.13"
+cookie = "0.16"
 regex = "1.7"
 lazy_static = "1.4"
 sailfish = "0.5"
-thiserror = "1.0"
+rust-embed = { version = "6.4", features = ["include-exclude"] }
+mime_guess = "2.0.4"
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
+figment = { version = "0.10", features = ["env", "toml"] }

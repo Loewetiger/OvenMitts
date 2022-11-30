@@ -1,19 +1,24 @@
-//! All the various structs for JSON/db support.
+//! Various structs for JSON objects and database models.
 
-use std::{borrow::Cow, str::FromStr};
-
-use chrono::{DateTime, FixedOffset};
-use rocket::{
-    http::Status,
-    outcome::Outcome,
-    request::{self, FromRequest},
-    Request,
-};
-use rocket_db_pools::Connection;
+use axum::extract::{FromRef, State};
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
+use std::{net::SocketAddr, path::PathBuf};
+use tower_cookies::Cookies;
 use url::Url;
 
-use crate::db::{Db, Mitts};
+use crate::{errors::OMError, Db};
+
+/// Session data for a user.
+#[derive(Debug, Deserialize)]
+pub struct Session {
+    /// Randomly generated session-id.
+    pub session: String,
+    /// The associated user.
+    pub user_id: String,
+    /// Time of creation in UTC.
+    pub created_at: NaiveDateTime,
+}
 
 /// Response to `OvenMediaEngine`'s admission webhook.
 #[derive(Debug, Serialize)]
@@ -106,21 +111,20 @@ pub struct User {
 
 impl User {
     /// Check whether the user has a specified permission
-    pub fn has_permission(&self, permission: String) -> bool {
-        return match self.permissions {
-            Some(ref permissions) => {
-                permissions.contains(&permission) || permissions.contains("IS_ADMIN")
-            }
-            None => false,
-        };
+    #[must_use]
+    pub fn has_permission(&self, permission: &str) -> bool {
+        self.permissions.as_ref().map_or(false, |permissions| {
+            permissions.contains(permission) || permissions.contains("IS_ADMIN")
+        })
     }
     /// Check whether the user is an admin
+    #[must_use]
     pub fn is_admin(&self) -> bool {
-        self.has_permission("IS_AMDIN".into())
+        self.has_permission("IS_AMDIN")
     }
     /// Find a User from the database from the username.
     /// Case-insensitive.
-    pub async fn from_name(username: &str, db: &mut Db) -> Option<Self> {
+    pub async fn from_name(username: &str, db: &Db) -> Option<Self> {
         sqlx::query_as!(
             User,
             "
@@ -133,50 +137,30 @@ impl User {
         .await
         .ok()
     }
-    /// Check if a given username can be found in the database.
-    /// This is case-insensitive.
-    pub async fn username_exists(username: &str, db: &mut Db) -> bool {
-        Self::from_name(username, db).await.is_some()
+    /// Find a User in the database for a given token.
+    pub async fn from_session(token: &str, db: &Db) -> Option<Self> {
+        sqlx::query_as!(
+            User,
+            "
+        SELECT users.* FROM users
+        LEFT JOIN sessions
+        ON users.username = sessions.user_id
+        WHERE session = ?
+        ",
+            token
+        )
+        .fetch_one(db)
+        .await
+        .ok()
     }
-}
-
-#[rocket::async_trait]
-impl<'r> FromRequest<'r> for User {
-    type Error = &'static str;
-
-    async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
-        let mut db: Connection<Mitts> = match Connection::from_request(req).await {
-            Outcome::Success(db) => db,
-            Outcome::Failure(_) => {
-                return Outcome::Failure((
-                    Status::InternalServerError,
-                    "Failed to establish database connection",
-                ))
-            }
-            Outcome::Forward(f) => return Outcome::Forward(f),
-        };
-
-        let cookie: Option<String> = req
-            .cookies()
-            .get_private("user_session")
-            .and_then(|c| c.value().parse().ok());
-
-        match cookie {
-            Some(token) => {
-                let session = SessionCookie::from_str(&token).unwrap_or_default();
-                if !session.is_valid() {
-                    return Outcome::Failure((Status::Unauthorized, "Invalid session"));
-                }
-
-                let user = session.get_user(&mut db).await;
-
-                match user {
-                    Some(user) => Outcome::Success(user),
-                    None => Outcome::Failure((Status::Unauthorized, "No user found in database")),
-                }
-            }
-            None => Outcome::Failure((Status::Unauthorized, "No session")),
-        }
+    /// Find a User in the database for a given cookie.
+    pub async fn from_req(State(db): State<Db>, cookies: Cookies) -> Result<Self, OMError> {
+        let om_cookie = cookies.get("om_session").ok_or(OMError::InvalidSession)?;
+        let session = om_cookie.value();
+        User::from_session(session, &db)
+            .await
+            .map(|u| u)
+            .ok_or(OMError::InvalidSession)
     }
 }
 
@@ -190,6 +174,7 @@ pub struct SendableUser {
     /// Stream key, used for displaying.
     pub stream_key: String,
     /// Optional stream title.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub stream_title: Option<String>,
     /// The current permissions of the user.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -208,13 +193,45 @@ impl From<User> for SendableUser {
     }
 }
 
+/// Payload for logging in and registering.
 #[derive(Debug, Deserialize)]
-/// The request that is sent by the frontend when a user wants to login.
-pub struct LoginUser {
+pub struct UserLogin {
     /// Username of the user.
     pub username: String,
     /// Password of the user.
     pub password: String,
+}
+
+/// Custom configuration for OvenMitts.
+#[derive(Debug, Deserialize, Clone)]
+pub struct OMConfig {
+    #[serde(default = "default_address")]
+    /// Address to bind to.
+    pub address: SocketAddr,
+    #[serde(default = "default_database")]
+    /// Path to the database
+    pub database: PathBuf,
+    /// The url base to access OvenMediaEngine.
+    pub ome_url: Url,
+    /// OME API access token.
+    pub access_token: String,
+    /// The key used by OME to sign the admission requests.
+    pub admission_key: String,
+    /// The url base to access OvenMitts.
+    pub base_url: Url,
+    /// Websocket url for the player.
+    pub ws_url: Url,
+}
+
+fn default_address() -> SocketAddr {
+    SocketAddr::new(
+        std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
+        8000,
+    )
+}
+
+fn default_database() -> PathBuf {
+    PathBuf::from("mitts.sqlite")
 }
 
 /// List of all current streams from OvenMediaEngine.
@@ -236,19 +253,25 @@ pub struct StreamResp {
     pub title: Option<String>,
 }
 
-/// Custom configuration for the OvenMitts.
-#[derive(Debug, serde::Deserialize)]
-pub struct Config {
-    /// The url base to access OvenMediaEngine.
-    pub ome_url: Url,
-    /// OME API access token.
-    pub access_token: String,
-    /// The key used by OME to sign the admission requests.
-    pub admission_key: String,
-    /// The url base to access OvenMitts.
-    pub base_url: Url,
-    /// Websocket url for the player.
-    pub ws_url: Url,
+#[derive(Debug, Clone)]
+/// The state for the server.
+pub struct AppState {
+    /// The database pool
+    pub db: Db,
+    /// The configuration for the server.
+    pub config: OMConfig,
+}
+
+impl FromRef<AppState> for Db {
+    fn from_ref(input: &AppState) -> Self {
+        input.db.clone()
+    }
+}
+
+impl FromRef<AppState> for OMConfig {
+    fn from_ref(input: &AppState) -> Self {
+        input.config.clone()
+    }
 }
 
 /// The struct used to update user attributes.
@@ -266,46 +289,4 @@ pub struct UserUpdate {
     pub stream_title: Option<String>,
     /// The permissions, can only be set by admins.
     pub permissions: Option<String>,
-}
-
-/// Struct to fill the encrypted session cookies.
-#[derive(Debug, Serialize, Deserialize, Default)]
-pub struct SessionCookie {
-    /// The corresponding username.
-    u: String,
-    /// The time until the cookie expires.
-    t: DateTime<FixedOffset>,
-}
-
-impl SessionCookie {
-    /// Create a new session cookie.
-    pub fn new(username: String, valid_until: DateTime<FixedOffset>) -> Self {
-        Self {
-            u: username,
-            t: valid_until,
-        }
-    }
-    /// Check if the session cookie is still valid.
-    pub fn is_valid(&self) -> bool {
-        self.t >= chrono::offset::Utc::now()
-    }
-    /// Get the user from the database.
-    pub async fn get_user(&self, db: &mut Db) -> Option<User> {
-        User::from_name(&self.u, db).await
-    }
-}
-
-impl<'c> From<SessionCookie> for Cow<'c, str> {
-    fn from(val: SessionCookie) -> Self {
-        let cookie = serde_json::to_string(&val).unwrap_or_default();
-        Cow::from(cookie)
-    }
-}
-
-impl FromStr for SessionCookie {
-    type Err = serde_json::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        serde_json::from_str(s)
-    }
 }
