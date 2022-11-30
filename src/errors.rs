@@ -1,9 +1,4 @@
-use rocket::{
-    http::{ContentType, Status},
-    response::Responder,
-    Response,
-};
-use std::io::Cursor;
+use axum::{http::StatusCode, response::IntoResponse};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -17,41 +12,52 @@ pub enum OMError {
     #[error("You don't have permission to do that.")]
     NoPermission,
     #[error("Username contains invalid characters.")]
-    InvalidName,
+    InvalidUsername,
     #[error("Invalid password.")]
     InvalidPassword,
-    #[error("Failed to make network request.")]
-    ReqwestError(#[from] reqwest::Error),
+    #[error(transparent)]
+    ReqwestError(reqwest::Error),
     #[error(transparent)]
     SqlxError(#[from] sqlx::Error),
-    #[error("Failed to hash password.")]
-    ArgonError,
+    #[error(transparent)]
+    JoinError(#[from] tokio::task::JoinError),
+    #[error("{0}")]
+    ArgonError(String),
 }
 
-impl OMError {
-    pub fn to_status(&self) -> Status {
-        use OMError::*;
+impl From<reqwest::Error> for OMError {
+    fn from(e: reqwest::Error) -> Self {
+        OMError::ReqwestError(e.without_url())
+    }
+}
 
-        match self {
-            SqlxError(_) | ReqwestError(_) | ArgonError => Status::InternalServerError,
-            InvalidSession | InvalidPassword => Status::Unauthorized,
-            NotFound(_) => Status::NotFound,
-            NameTaken => Status::Conflict,
-            NoPermission => Status::Forbidden,
-            InvalidName => Status::BadRequest,
+impl From<argon2::password_hash::Error> for OMError {
+    fn from(e: argon2::password_hash::Error) -> Self {
+        match e {
+            argon2::password_hash::Error::Password => OMError::InvalidPassword,
+            _ => OMError::ArgonError(e.to_string()),
         }
     }
 }
 
-impl<'r> Responder<'r, 'static> for OMError {
-    fn respond_to(self, _: &'r rocket::Request<'_>) -> rocket::response::Result<'static> {
-        let body = self.to_string();
+impl OMError {
+    const fn status_code(&self) -> StatusCode {
+        match self {
+            Self::InvalidSession => StatusCode::UNAUTHORIZED,
+            Self::NotFound(_) => StatusCode::NOT_FOUND,
+            Self::NameTaken => StatusCode::CONFLICT,
+            Self::NoPermission | Self::InvalidPassword => StatusCode::FORBIDDEN,
+            Self::InvalidUsername => StatusCode::BAD_REQUEST,
+            Self::SqlxError(_)
+            | Self::JoinError(_)
+            | Self::ArgonError(_)
+            | Self::ReqwestError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+}
 
-        let resp = Response::build()
-            .header(ContentType::Plain)
-            .status(self.to_status())
-            .sized_body(body.len(), Cursor::new(body))
-            .finalize();
-        Ok(resp)
+impl IntoResponse for OMError {
+    fn into_response(self) -> axum::response::Response {
+        (self.status_code(), self.to_string()).into_response()
     }
 }

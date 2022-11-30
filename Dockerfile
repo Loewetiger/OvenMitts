@@ -23,8 +23,8 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry cargo build --release
 # use a plain alpine image, the alpine version needs to match the builder
 FROM alpine:3.16
 # set default env vars
-ENV MITTS_ADDRESS 0.0.0.0
-ENV MITTS_DATABASES {mitts={url="/config/mitts.sqlite"}}
+ENV MITTS_ADDRESS 0.0.0.0:8000
+ENV MITTS_DATABASE /config/mitts.sqlite
 ENV MITTS_CONFIG /config/mitts.toml
 # if needed, install additional dependencies here
 RUN apk add --no-cache libgcc

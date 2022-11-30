@@ -4,16 +4,16 @@
 
 use lazy_static::lazy_static;
 use regex::Regex;
-#[macro_use]
-extern crate rocket;
+use sqlx::{Pool, Sqlite};
 
-mod admission;
 mod crypto;
-pub mod db;
 mod errors;
 pub mod objects;
 pub mod routes;
 pub mod static_files;
+
+/// The database connection pool.
+pub type Db = Pool<Sqlite>;
 
 lazy_static! {
     /// A regex that matches a valid username.

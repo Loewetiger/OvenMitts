@@ -8,7 +8,6 @@ use rand::distributions::{Alphanumeric, DistString};
 use rand_core::{OsRng, RngCore};
 
 /// Generate a random byte array of the given length with the OS's secure random number generator.
-#[must_use]
 pub fn random_data(size: usize) -> Vec<u8> {
     let mut key = vec![0; size];
     OsRng.fill_bytes(&mut key);
@@ -24,12 +23,9 @@ pub fn hash_password(password: &[u8]) -> Result<String, argon2::password_hash::E
 }
 
 /// Verify a password against a given hash.
-pub fn verify_password(hash: &str, password: &[u8]) -> Result<bool, argon2::password_hash::Error> {
+pub fn verify_password(hash: &str, password: &[u8]) -> Result<(), argon2::password_hash::Error> {
     let parsed_hash = PasswordHash::new(hash)?;
-    let result = Argon2::default()
-        .verify_password(password, &parsed_hash)
-        .is_ok();
-    Ok(result)
+    Argon2::default().verify_password(password, &parsed_hash)
 }
 
 /// Generate a random stream key.

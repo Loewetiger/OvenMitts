@@ -1,49 +1,57 @@
-#[macro_use]
-extern crate rocket;
-
-use ovenmitts::objects::Config;
-use rocket::fairing::AdHoc;
-use rocket::figment::providers::{Env, Format, Toml};
-use rocket::figment::value::{Map, Value};
-use rocket::figment::{map, Figment, Profile};
-use rocket_db_pools::Database;
-
-use ovenmitts::db::{run_migrations, Mitts};
-use ovenmitts::routes::{
-    get_streams, get_user, list_users, post_admission, post_login, post_logout, post_register,
-    update_user,
+use axum::{
+    routing::{get, post},
+    Router,
 };
-use ovenmitts::static_files::{get_assets, get_index, get_indexjs};
+use figment::{
+    providers::{Env, Format, Toml},
+    Figment,
+};
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
+use tower_cookies::CookieManagerLayer;
 
-#[launch]
-fn rocket() -> _ {
-    let db: Map<_, Value> = map! {
-        "url" => "mitts.sqlite".into(),
-    };
-    let figment = Figment::from(rocket::Config::default())
-        .merge(("databases", map!["mitts" => db]))
-        .merge(Toml::file(Env::var_or("MITTS_CONFIG", "mitts.toml")).profile("default"))
-        .merge(Env::prefixed("MITTS_").global())
-        .select(Profile::from_env_or("APP_PROFILE", "default"));
+use ovenmitts::{
+    objects::{AppState, OMConfig},
+    routes::{admission, list_users, login, logout, register, streams, update_user, user},
+    static_files::{index, index_js, static_handler},
+};
 
-    rocket::custom(figment)
-        .mount(
-            "/",
-            routes![
-                post_admission,
-                get_user,
-                post_login,
-                post_logout,
-                post_register,
-                update_user,
-                list_users,
-                get_streams,
-                get_index,
-                get_indexjs,
-                get_assets
-            ],
-        )
-        .attach(Mitts::init())
-        .attach(AdHoc::try_on_ignite("SQLx Migrations", run_migrations))
-        .attach(AdHoc::config::<Config>())
+#[tokio::main]
+async fn main() -> eyre::Result<()> {
+    let path = std::env::var("MITTS_CONFIG").unwrap_or("mitts.toml".into());
+    let settings: OMConfig = Figment::new()
+        .merge(Toml::file(path))
+        .merge(Env::prefixed("MITTS_"))
+        .extract()?;
+
+    let options = SqliteConnectOptions::new()
+        .filename(settings.database.clone())
+        .create_if_missing(true)
+        .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal);
+    let pool = SqlitePoolOptions::new().connect_with(options).await?;
+
+    sqlx::migrate!().run(&pool).await?;
+
+    let app = Router::new()
+        .route("/admission", post(admission))
+        .route("/user", get(user))
+        .route("/user/login", post(login))
+        .route("/user/logout", post(logout))
+        .route("/user/register", post(register))
+        .route("/user/list", get(list_users))
+        .route("/user/update", post(update_user))
+        .route("/streams", get(streams))
+        .route("/", get(index))
+        .route("/index.js", get(index_js))
+        .route("/assets/*path", get(static_handler))
+        .with_state(AppState {
+            db: pool,
+            config: settings.clone(),
+        })
+        .layer(CookieManagerLayer::new());
+
+    axum::Server::bind(&settings.address)
+        .serve(app.into_make_service())
+        .await?;
+
+    Ok(())
 }

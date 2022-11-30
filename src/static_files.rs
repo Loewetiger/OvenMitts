@@ -1,12 +1,15 @@
-//! Logic for embedding and serving the static files, to be able to have a single binary.
+//! Serving static files.
 
-use std::{borrow::Cow, ffi::OsStr, path::PathBuf};
-
-use rocket::{http::ContentType, response::content::RawHtml, State};
+use axum::{
+    body::{boxed, Full},
+    extract::State,
+    http::{header, StatusCode, Uri},
+    response::{IntoResponse, Response},
+};
 use rust_embed::RustEmbed;
 use sailfish::TemplateOnce;
 
-use crate::objects::Config;
+use crate::objects::OMConfig;
 
 #[derive(RustEmbed)]
 #[folder = "./dist"]
@@ -20,34 +23,57 @@ struct JsReplace<'a> {
     ws_url: &'a str,
 }
 
-/// Serves the `index.html` file.
-#[get("/")]
-pub fn get_index() -> Option<RawHtml<Cow<'static, [u8]>>> {
-    let asset = Asset::get("index.html")?;
-    Some(RawHtml(asset.data))
+/// Return the index.
+pub async fn index() -> impl IntoResponse {
+    static_handler("/index.html".parse::<Uri>().unwrap_or_default()).await
 }
 
-/// Serves the `index.js` file, with the `base_url` and `ws_url` replaced.
-#[get("/index.js")]
-pub fn get_indexjs(config: &State<Config>) -> Option<(ContentType, String)> {
-    let ctx = JsReplace {
+/// Return the static file.
+pub async fn static_handler(uri: Uri) -> impl IntoResponse {
+    let path = uri.path().trim_start_matches('/').to_string();
+
+    StaticFile(path)
+}
+
+/// Return the index.js file, replacing the base URL and websocket URL.
+pub async fn index_js(State(config): State<OMConfig>) -> impl IntoResponse {
+    let content = JsReplace {
         base_url: config.base_url.as_str(),
         ws_url: config.ws_url.as_str(),
-    };
-    let js = ctx.render_once().ok()?;
-    Some((ContentType::JavaScript, js))
+    }
+    .render_once()
+    .unwrap();
+
+    let body = boxed(Full::from(content));
+    let mime = mime_guess::from_path("index.js").first_or_octet_stream();
+    Response::builder()
+        .header(header::CONTENT_TYPE, mime.as_ref())
+        .body(body)
+        .unwrap()
 }
 
-/// Serves the static files in the `assets` directory.
-#[get("/assets/<file..>")]
-pub fn get_assets(file: PathBuf) -> Option<(ContentType, Cow<'static, [u8]>)> {
-    let filename = format!("assets/{}", file.display());
-    let asset = Asset::get(&filename)?;
-    let content_type = file
-        .extension()
-        .and_then(OsStr::to_str)
-        .and_then(ContentType::from_extension)
-        .unwrap_or(ContentType::Bytes);
+/// A static file.
+pub struct StaticFile<T>(pub T);
 
-    Some((content_type, asset.data))
+impl<T> IntoResponse for StaticFile<T>
+where
+    T: Into<String>,
+{
+    fn into_response(self) -> Response {
+        let path = self.0.into();
+
+        if let Some(content) = Asset::get(path.as_str()) {
+            let body = boxed(Full::from(content.data));
+            let mime = mime_guess::from_path(path).first_or_octet_stream();
+            Response::builder()
+                .header(header::CONTENT_TYPE, mime.as_ref())
+                .body(body)
+                .unwrap()
+        } else {
+            Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(boxed(Full::from("404")))
+                .unwrap()
+        }
+    }
 }

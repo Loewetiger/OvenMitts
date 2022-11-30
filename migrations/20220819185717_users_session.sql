@@ -7,3 +7,9 @@ CREATE TABLE users (
     stream_title TEXT,
     UNIQUE (username COLLATE NOCASE)
 );
+CREATE TABLE sessions (
+    session TEXT PRIMARY KEY NOT NULL UNIQUE,
+    user_id TEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(username) ON DELETE CASCADE
+);

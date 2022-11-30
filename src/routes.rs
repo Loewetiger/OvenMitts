@@ -1,150 +1,187 @@
-//! The routes for the webserver.
+//! All the routes for the API.
 
-use std::str::FromStr;
-
-use chrono::DateTime;
-use rocket::{
-    http::{Cookie, CookieJar, SameSite, Status},
-    serde::json::Json,
-    time::{Duration, OffsetDateTime},
-    State,
-};
-use rocket_db_pools::Connection;
+use axum::{extract::State, Json};
+use cookie::{time, SameSite};
+use tokio::task::spawn_blocking;
+use tower_cookies::{Cookie, Cookies};
 
 use crate::{
-    admission::handle_admission,
     crypto::{gen_stream_key, hash_password, verify_password},
-    db::Mitts,
     errors::OMError,
     objects::{
-        Admission, AdmissionResponse, Config, LoginUser, SendableUser, SessionCookie, StreamResp,
-        Streams, User, UserUpdate,
+        Admission, AdmissionResponse, OMConfig, SendableUser, StreamResp, Streams, User, UserLogin,
+        UserUpdate,
     },
-    USERNAME_RE,
+    Db, USERNAME_RE,
 };
 
-/// Used by OvenMediaEngine's [admission webhooks](https://airensoft.gitbook.io/ovenmediaengine/access-control/admission-webhooks).
-///
-/// Checks if the given stream key is in the database and rewrites the stream url to point to the users' username.
-/// It does **not** currently check the headers for the HMAC signature provided by OME.
-#[post("/admission", data = "<adm>")]
-pub async fn post_admission(
-    adm: Json<Admission>,
-    db: Connection<Mitts>,
+/// Handle the admission requests from the OvenMediaEngine server.
+pub async fn admission(
+    State(db): State<Db>,
+    Json(adm): Json<Admission>,
 ) -> Json<AdmissionResponse> {
-    Json(handle_admission(adm.into_inner(), db).await)
-}
-
-/// Get information about the currently logged in user.
-#[get("/user")]
-#[must_use]
-pub fn get_user(user: User) -> Json<SendableUser> {
-    Json(user.into())
-}
-
-/// Login endpoint. Generates a session cookie and adds the token to the database.
-#[post("/user/login", data = "<creds>")]
-pub async fn post_login(
-    creds: Json<LoginUser>,
-    mut db: Connection<Mitts>,
-    cookies: &CookieJar<'_>,
-) -> Result<(), OMError> {
-    let user = match User::from_name(&creds.username, &mut *db).await {
-        Some(u) => u,
-        None => return Err(OMError::NotFound(creds.username.clone())),
+    let mut url = adm.borrow_url().clone();
+    let mut path: Vec<&str> = match url.path_segments().map(std::iter::Iterator::collect) {
+        Some(vec) => vec,
+        None => return Json(AdmissionResponse::deny()),
     };
-    let valid_password =
-        verify_password(&user.password, creds.password.as_bytes()).unwrap_or(false);
-    if valid_password {
-        let time = OffsetDateTime::now_utc() + Duration::days(14);
-        let iso8601 = time
-            .format(&rocket::time::format_description::well_known::iso8601::Iso8601::DEFAULT)
-            .unwrap_or("1997-11-21T09:55:06.000000000-06:00".into());
-        let cookie = SessionCookie::new(
-            user.username,
-            DateTime::parse_from_rfc3339(&iso8601).unwrap_or_default(),
-        );
+    // Get the last element, which should be the stream key
+    let stream_key = path.pop().unwrap_or_default();
+    let user = sqlx::query_as!(User, "SELECT * FROM users WHERE stream_key = ?", stream_key)
+        .fetch_one(&db)
+        .await;
 
-        let auth_cookie = Cookie::build("user_session", cookie)
-            .path("/")
-            .http_only(true)
-            .secure(true)
-            .same_site(SameSite::Lax)
-            .expires(time);
-        cookies.add_private(auth_cookie.finish());
-        Ok(())
-    } else {
-        Err(OMError::InvalidPassword)
+    match user {
+        Ok(user) => {
+            if !user.has_permission("CAN_STREAM") {
+                return Json(AdmissionResponse::deny());
+            };
+            path.push(&user.username);
+            url.set_path(&path.join("/"));
+            Json(AdmissionResponse::allow(url))
+        }
+        Err(_) => Json(AdmissionResponse::deny()),
     }
 }
 
-/// Logout endpoint. Deletes the session cookie, as well as the session from the database.
-#[post("/user/logout")]
-pub async fn post_logout(cookies: &CookieJar<'_>) -> Status {
-    cookies.remove_private(Cookie::named("user_session"));
-    Status::Ok
+/// Get the currently logged in user.
+pub async fn user(State(db): State<Db>, cookies: Cookies) -> Result<Json<SendableUser>, OMError> {
+    let user = User::from_req(State(db), cookies)
+        .await
+        .map(|u| Json(u.into()))?;
+    Ok(user)
 }
 
-/// Register endpoint. Creates a new user in the database.
-#[post("/user/register", data = "<creds>")]
-pub async fn post_register(
-    creds: Json<LoginUser>,
-    mut db: Connection<Mitts>,
+/// Create a session and set the cookie.
+pub async fn login(
+    State(db): State<Db>,
+    cookies: Cookies,
+    Json(creds): Json<UserLogin>,
 ) -> Result<(), OMError> {
-    if User::username_exists(&creds.username, &mut *db).await {
-        return Err(OMError::NameTaken);
-    }
-    if !USERNAME_RE.is_match(&creds.username) {
-        return Err(OMError::InvalidName);
+    // Check if a session already exists
+    if let Some(c) = cookies.get("om_session") {
+        let token = c.value().to_string();
+        if (User::from_session(&token, &db).await).is_some() {
+            return Ok(());
+        }
     }
 
-    let password_hash =
-        hash_password(creds.password.as_bytes()).map_err(|_| OMError::ArgonError)?;
+    let user = User::from_name(&creds.username, &db)
+        .await
+        .ok_or(OMError::NotFound(creds.username))?;
+
+    spawn_blocking(move || verify_password(&user.password, creds.password.as_bytes())).await??;
+
+    let token = base64::encode(crate::crypto::random_data(64));
+    sqlx::query!(
+        "INSERT INTO sessions (session, user_id) VALUES(?, ?)",
+        token,
+        user.username
+    )
+    .execute(&db)
+    .await?;
+
+    let session_cookie = Cookie::build("om_session", token)
+        .path("/")
+        .http_only(true)
+        .same_site(SameSite::Lax)
+        .secure(true)
+        .expires(time::OffsetDateTime::now_utc() + time::Duration::days(14))
+        .finish();
+    cookies.add(session_cookie);
+
+    Ok(())
+}
+
+/// Remove the session cookie.
+pub async fn logout(State(db): State<Db>, cookies: Cookies) -> Result<(), OMError> {
+    let Some(om_cookie) = cookies.get("om_session") else {
+        return Ok(());
+    };
+    let token = om_cookie
+        .value()
+        .parse::<String>()
+        .map_err(|_| OMError::InvalidSession)?;
+
+    sqlx::query!("DELETE FROM sessions WHERE session = ?", token)
+        .execute(&db)
+        .await?;
+
+    cookies.remove(Cookie::build("om_session", "").path("/").finish());
+
+    Ok(())
+}
+
+/// Register a new user, making sure that the username is valid.
+pub async fn register(State(db): State<Db>, Json(creds): Json<UserLogin>) -> Result<(), OMError> {
+    if User::from_name(&creds.username, &db).await.is_some() {
+        return Err(OMError::NameTaken);
+    };
+
+    USERNAME_RE
+        .is_match(&creds.username)
+        .then_some(())
+        .ok_or(OMError::InvalidUsername)?;
+
+    let hashed_password =
+        tokio::task::spawn_blocking(move || hash_password(creds.password.as_bytes())).await??;
 
     let stream_key = gen_stream_key();
+
     sqlx::query!(
         "INSERT INTO users(username, display_name, password, stream_key) VALUES(?, ?, ?, ?)",
         creds.username,
         creds.username,
-        password_hash,
+        hashed_password,
         stream_key
     )
-    .execute(&mut *db)
+    .execute(&db)
     .await?;
 
     Ok(())
 }
 
-/// Change the settings of a user.
-#[post("/user/update", data = "<body>")]
-pub async fn update_user(
-    mut db: Connection<Mitts>,
-    cookies: &CookieJar<'_>,
-    body: Json<UserUpdate>,
-) -> Result<Status, OMError> {
-    // warning: this is about to get ugly D:
-    // get the current user
-    let session_cookie = match cookies.get_private("user_session") {
-        Some(c) => SessionCookie::from_str(c.value()).unwrap_or_default(),
-        None => return Err(OMError::InvalidSession),
-    };
-    let logged_user = match session_cookie.get_user(&mut *db).await {
-        Some(u) => u,
-        None => return Err(OMError::InvalidSession),
+/// Get all users in the database.
+pub async fn list_users(
+    State(db): State<Db>,
+    cookies: Cookies,
+) -> Result<Json<Vec<SendableUser>>, OMError> {
+    let logged_user = User::from_req(State(db.clone()), cookies).await?;
+    if !logged_user.is_admin() {
+        return Err(OMError::NoPermission);
     };
 
-    // get the user to be updated
-    if body.username.is_some() && !logged_user.is_admin() {
+    let users: Vec<SendableUser> = sqlx::query_as!(User, "SELECT * FROM users")
+        .fetch_all(&db)
+        .await?
+        .into_iter()
+        .map(|mut u| {
+            u.stream_key = String::new(); // Don't send the stream key
+            u.into()
+        })
+        .collect();
+
+    Ok(Json(users))
+}
+
+/// Update a user.
+pub async fn update_user(
+    State(db): State<Db>,
+    cookies: Cookies,
+    Json(body): Json<UserUpdate>,
+) -> Result<(), OMError> {
+    let performing_user = User::from_req(State(db.clone()), cookies).await?;
+    if body.username.is_some() && !performing_user.is_admin() {
         return Err(OMError::NoPermission);
-    }
+    };
 
     let user = match &body.username {
-        Some(u) => User::from_name(u, &mut *db).await,
-        None => Some(logged_user.clone()),
+        Some(u) => User::from_name(u, &db).await,
+        None => Some(performing_user.clone()),
     };
     let user = match user {
         Some(u) => u,
-        None => return Err(OMError::NotFound(body.username.clone().unwrap_or_default())),
+        None => return Err(OMError::NotFound(body.username.unwrap_or_default())),
     };
 
     // check the individual fields
@@ -154,9 +191,9 @@ pub async fn update_user(
             dn,
             user.username
         )
-        .execute(&mut *db)
+        .execute(&db)
         .await?;
-    }
+    };
 
     if let Some(stream_title) = &body.stream_title {
         sqlx::query!(
@@ -164,21 +201,21 @@ pub async fn update_user(
             stream_title,
             user.username
         )
-        .execute(&mut *db)
+        .execute(&db)
         .await?;
-    }
+    };
 
     let new_password: Option<String> = match (body.old_password.clone(), body.new_password.clone())
     {
         (None, Some(np)) => {
-            if logged_user.is_admin() {
+            if performing_user.is_admin() {
                 hash_password(np.as_bytes()).ok()
             } else {
                 return Err(OMError::NoPermission);
             }
         }
         (Some(op), Some(np)) => {
-            if verify_password(&user.password, op.as_bytes()).unwrap_or(false) {
+            if verify_password(&user.password, op.as_bytes()).is_ok() {
                 hash_password(np.as_bytes()).ok()
             } else {
                 return Err(OMError::InvalidPassword);
@@ -192,55 +229,31 @@ pub async fn update_user(
             pw,
             user.username
         )
-        .execute(&mut *db)
+        .execute(&db)
         .await?;
     };
 
-    if logged_user.is_admin() {
+    if performing_user.is_admin() {
         if let Some(permissions) = &body.permissions {
             sqlx::query!(
                 "UPDATE users SET permissions = ? WHERE username = ?",
                 permissions,
                 user.username
             )
-            .execute(&mut *db)
+            .execute(&db)
             .await?;
         }
     } else if body.permissions.is_some() {
         return Err(OMError::NoPermission);
-    }
-    Ok(Status::Ok)
+    };
+
+    Ok(())
 }
 
-/// Returns all the users in the database.
-#[get("/user/list")]
-pub async fn list_users(
-    mut db: Connection<Mitts>,
-    user: User,
-) -> Result<Json<Vec<SendableUser>>, OMError> {
-    if !user.is_admin() {
-        return Err(OMError::NoPermission);
-    }
-    let users = sqlx::query_as!(User, "SELECT * FROM users")
-        .fetch_all(&mut *db)
-        .await?;
-
-    Ok(Json(
-        users
-            .into_iter()
-            .map(|mut u| {
-                u.stream_key = String::new();
-                u.into()
-            })
-            .collect(),
-    ))
-}
-
-/// Returns all currently active streams.
-#[get("/streams")]
-pub async fn get_streams(
-    config: &State<Config>,
-    mut db: Connection<Mitts>,
+/// Get all currently active streams.
+pub async fn streams(
+    State(db): State<Db>,
+    State(config): State<OMConfig>,
 ) -> Result<Json<Vec<StreamResp>>, OMError> {
     let mut url = config.ome_url.clone();
     url.set_path("v1/vhosts/default/apps/stream/streams");
@@ -265,7 +278,7 @@ pub async fn get_streams(
     let mut streams: Vec<StreamResp> = Vec::new();
     // SQLx sadly doesn't support IN queries, so we have to do this the hard way
     for s in body.response {
-        match User::from_name(&s, &mut *db).await {
+        match User::from_name(&s, &db).await {
             Some(u) => streams.push(StreamResp {
                 username: u.username,
                 display_name: u.display_name,

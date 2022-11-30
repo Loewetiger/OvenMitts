@@ -1,5 +1,15 @@
 {
   "db": "SQLite",
+  "066160cc004cf448ac6c5217add69d978efefd7eb054077d445ab853211c97e6": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "INSERT INTO sessions (session, user_id) VALUES(?, ?)"
+  },
   "26e7e05427bc7dabcd7815d27764fda2baf4cfe60a2d2d6ee2a1f773dccbbce2": {
     "describe": {
       "columns": [
@@ -164,6 +174,54 @@
     },
     "query": "UPDATE users SET stream_title = ? WHERE username = ?"
   },
+  "932807b752f9db0f3ce37de46ae2e94cf251b1b238ccf3741c370bbfa767270f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "username",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "display_name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "password",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "stream_key",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "permissions",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "stream_title",
+          "ordinal": 5,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        true
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "\n        SELECT users.* FROM users\n        LEFT JOIN sessions\n        ON users.username = sessions.user_id\n        WHERE session = ?\n        "
+  },
   "b6093f34d0e0ed711f7ecbb4d763298c8be7f2f2bab65556bb46062c6cd3a83f": {
     "describe": {
       "columns": [],
@@ -173,6 +231,16 @@
       }
     },
     "query": "UPDATE users SET display_name = ? WHERE username = ?"
+  },
+  "bed2933711c04025faff23dbf82af3ec15a9f4ed6e312cedbc74004c950e0822": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "DELETE FROM sessions WHERE session = ?"
   },
   "c595658ae1b50df950e77c917f0eb66459ce6738420548cf43f86cc5c44905db": {
     "describe": {
